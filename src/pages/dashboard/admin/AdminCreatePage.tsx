@@ -1,6 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-"use client";
-
 import { useState } from "react";
 import { useMutation } from "@apollo/client";
 import { ArrowLeft, Save } from "lucide-react";

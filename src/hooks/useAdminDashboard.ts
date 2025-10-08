@@ -1,6 +1,11 @@
 import { useQuery } from '@apollo/client';
 import { GET_DASHBOARD_STATS, GET_ADMIN_ANALYTICS } from '../graphql/queries/admin/getDashboardStats';
-import { AnalyticsDateRangeInput } from '../__generated__/graphql';
+
+export class AnalyticsDateRangeInput {
+  startDate?: Date;
+  endDate?: Date;
+  period?: "day" | "week" | "month" | "year";
+}
 
 export const useAdminDashboard = (dateRange?: AnalyticsDateRangeInput) => {
   const statsQuery = useQuery(GET_DASHBOARD_STATS);

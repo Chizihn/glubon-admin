@@ -20,8 +20,11 @@ import {
 } from "../../../components/ui/dialog";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
-import { AlertDialog, AlertDialogDescription } from "../../../components/ui/alert-dialog";
-import { GET_PENDING_VERIFICATIONS } from "../../../graphql/queries/verification";
+import {
+  AlertDialog,
+  AlertDialogDescription,
+} from "../../../components/ui/alert-dialog";
+import { GET_VERIFICATIONS } from "../../../graphql/queries/verification";
 import { REVIEW_VERIFICATION } from "../../../graphql/mutations/verification";
 
 type Verification = {
@@ -45,7 +48,7 @@ type Verification = {
 };
 
 type VerificationsResponse = {
-  getPendingVerifications: {
+  getVerifications: {
     items: Verification[];
     pagination: {
       totalItems: number;
@@ -61,13 +64,14 @@ const ITEMS_PER_PAGE = 10;
 export default function VerificationsPage() {
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedVerification, setSelectedVerification] = useState<Verification | null>(null);
+  const [selectedVerification, setSelectedVerification] =
+    useState<Verification | null>(null);
   const [isRejecting, setIsRejecting] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [isApproving, setIsApproving] = useState(false);
 
   const { data, loading, error, refetch } = useQuery<VerificationsResponse>(
-    GET_PENDING_VERIFICATIONS,
+    GET_VERIFICATIONS,
     {
       variables: { page, limit: ITEMS_PER_PAGE, search: searchTerm },
       fetchPolicy: "network-only",
@@ -126,8 +130,8 @@ export default function VerificationsPage() {
     });
   };
 
-  const verifications = data?.getPendingVerifications?.items || [];
-  const pagination = data?.getPendingVerifications?.pagination || {
+  const verifications = data?.getVerifications?.items || [];
+  const pagination = data?.getVerifications?.pagination || {
     totalItems: 0,
     totalPages: 1,
     currentPage: 1,
@@ -140,7 +144,7 @@ export default function VerificationsPage() {
     }, 500);
 
     return () => clearTimeout(timerId);
-  }, [searchTerm]);
+  }, [refetch, searchTerm]);
 
   if (loading && !data) {
     return (
@@ -152,9 +156,11 @@ export default function VerificationsPage() {
 
   if (error) {
     return (
-      <AlertDialog >
+      <AlertDialog>
         <AlertCircle className="h-4 w-4" />
-        <AlertDialogDescription>Error loading verifications: {error.message}</AlertDialogDescription>
+        <AlertDialogDescription>
+          Error loading verifications: {error.message}
+        </AlertDialogDescription>
       </AlertDialog>
     );
   }
@@ -382,7 +388,9 @@ export default function VerificationsPage() {
                       </p>
                       <p>
                         <span className="font-medium">Submitted:</span>{" "}
-                        {new Date(selectedVerification.createdAt).toLocaleString()}
+                        {new Date(
+                          selectedVerification.createdAt
+                        ).toLocaleString()}
                       </p>
                       {selectedVerification.rejectionReason && (
                         <p>
@@ -399,18 +407,23 @@ export default function VerificationsPage() {
                 <div className="space-y-4">
                   <h3 className="font-medium">Document Images</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {selectedVerification.documentImages?.map((image, index) => (
-                      <div key={index} className="border rounded-md overflow-hidden">
-                        <img
-                          src={image}
-                          alt={`Document ${index + 1}`}
-                          className="w-full h-48 object-contain bg-muted"
-                        />
-                        <div className="p-2 text-center text-sm text-muted-foreground">
-                          {`Document ${index + 1}`}
+                    {selectedVerification.documentImages?.map(
+                      (image, index) => (
+                        <div
+                          key={index}
+                          className="border rounded-md overflow-hidden"
+                        >
+                          <img
+                            src={image}
+                            alt={`Document ${index + 1}`}
+                            className="w-full h-48 object-contain bg-muted"
+                          />
+                          <div className="p-2 text-center text-sm text-muted-foreground">
+                            {`Document ${index + 1}`}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    )}
                   </div>
                 </div>
 
@@ -438,7 +451,10 @@ export default function VerificationsPage() {
                         <Button
                           variant="destructive"
                           onClick={() =>
-                            handleReject(selectedVerification.id, rejectionReason)
+                            handleReject(
+                              selectedVerification.id,
+                              rejectionReason
+                            )
                           }
                           disabled={!rejectionReason.trim() || isRejecting}
                         >
@@ -466,7 +482,9 @@ export default function VerificationsPage() {
                       variant="destructive"
                       onClick={() => {
                         setIsRejecting(true);
-                        setRejectionReason(selectedVerification.rejectionReason || "");
+                        setRejectionReason(
+                          selectedVerification.rejectionReason || ""
+                        );
                       }}
                     >
                       Reject Verification

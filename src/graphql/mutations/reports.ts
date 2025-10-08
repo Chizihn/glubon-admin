@@ -1,1 +1,2 @@
-import { gql } from "@apollo/client";
+// Reports mutations will be added here
+export const PLACEHOLDER = true;

@@ -4,7 +4,7 @@ import { X, ZoomIn, ZoomOut, RotateCw, Download, ChevronLeft, ChevronRight } fro
 interface DocumentViewerProps {
   isOpen: boolean;
   onClose: () => void;
-  document: {
+  doc: {
     images: string[];
     userName: string;
     documentType: string;
@@ -19,7 +19,7 @@ interface DocumentViewerProps {
 export function DocumentViewer({
   isOpen,
   onClose,
-  document,
+  doc,
   onApprove,
   onReject,
   isReviewing,
@@ -30,8 +30,8 @@ export function DocumentViewer({
 
   if (!isOpen) return null;
 
-  const currentImage = document.images[currentImageIndex];
-  const totalImages = document.images.length;
+  const currentImage = doc.images[currentImageIndex];
+  const totalImages = doc.images.length;
 
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % totalImages);
@@ -54,7 +54,7 @@ export function DocumentViewer({
   const downloadImage = () => {
     const link = document.createElement('a');
     link.href = currentImage;
-    link.download = `document-${document.documentNumber}-${currentImageIndex + 1}.jpg`;
+    link.download = `document-${doc.documentNumber}-${currentImageIndex + 1}.jpg`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -66,10 +66,10 @@ export function DocumentViewer({
       <div className="flex justify-between items-center p-4 border-b border-gray-800">
         <div className="text-white">
           <h2 className="text-lg font-medium">
-            {document.userName}'s {document.documentType}
+            {doc.userName}'s {doc.documentType}
           </h2>
           <p className="text-sm text-gray-400">
-            {document.documentNumber} • {new Date(document.submittedAt).toLocaleDateString()}
+            {doc.documentNumber} • {new Date(doc.submittedAt).toLocaleDateString()}
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -156,7 +156,7 @@ export function DocumentViewer({
       {totalImages > 1 && (
         <div className="p-4 border-t border-gray-800 overflow-x-auto">
           <div className="flex space-x-2 justify-center">
-            {document.images.map((img, idx) => (
+            {doc.images.map((img, idx) => (
               <button
                 key={idx}
                 onClick={() => {

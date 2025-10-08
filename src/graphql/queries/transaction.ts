@@ -1,5 +1,36 @@
 import { gql } from "@apollo/client";
 
+export const GET_TRANSACTION_ANALYTICS = gql`
+  query GetTransactionAnalytics($input: TransactionReportInput!) {
+    transactionAnalytics(input: $input) {
+      dailyData {
+        date
+        count
+        totalAmount
+      }
+      typeBreakdown {
+        type
+        count
+        totalAmount
+        percentage
+      }
+      statusBreakdown {
+        status
+        count
+        percentage
+      }
+      summary {
+        totalAmount
+        totalTransactions
+        avgTransactionAmount
+        successfulTransactions
+        pendingTransactions
+        failedTransactions
+      }
+    }
+  }
+`;
+
 export const GET_ALL_TRANSACTIONS = gql`
   query Transactions(
     $pagination: PaginationInput
@@ -45,7 +76,6 @@ export const GET_ALL_TRANSACTIONS = gql`
           endDate
           amount
           status
-          escrowTransactionId
           createdAt
           updatedAt
         }
@@ -110,7 +140,6 @@ export const GET_TRANSACTION_BY_ID = gql`
         endDate
         amount
         status
-        escrowTransactionId
         createdAt
         updatedAt
 

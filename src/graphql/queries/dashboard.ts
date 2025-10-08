@@ -20,23 +20,6 @@ export const GET_ADMIN_DASHBOARD_STATS = gql`
 export const GET_ADMIN_DASHBOARD_ANALYTICS = gql`
   query GetAdminAnalytics($dateRange: AnalyticsDateRangeInput) {
     getAdminAnalytics(dateRange: $dateRange) {
-      userGrowth {
-        date
-        count
-      }
-      propertyGrowth {
-        date
-        count
-      }
-      activity {
-        date
-        count
-        type
-      }
-      geographicData {
-        location
-        count
-      }
       overview {
         users {
           total
@@ -78,12 +61,12 @@ export const GET_ADMIN_DASHBOARD_ANALYTICS = gql`
           actionsToday
         }
         growth {
-          users {
+          properties {
             current
             lastMonth
             percentChange
           }
-          properties {
+          users {
             current
             lastMonth
             percentChange
@@ -91,7 +74,40 @@ export const GET_ADMIN_DASHBOARD_ANALYTICS = gql`
         }
         totalRevenue
       }
+      charts {
+        userGrowth {
+          date
+          renters
+          listers
+          total
+        }
+        propertyGrowth {
+          date
+          active
+          pending
+          total
+        }
+        activity {
+          date
+          views
+          likes
+          messages
+          conversations
+        }
+        geographic {
+          state
+          users
+          properties
+        }
+      }
       performance {
+        conversionRate
+        likeRate
+        userRetentionRate
+        avgVerificationTime
+        avgPropertyApprovalTime
+        activeUsersLast7Days
+        activeUsersLast30Days
         topPerformingProperties {
           id
           title
@@ -99,6 +115,26 @@ export const GET_ADMIN_DASHBOARD_ANALYTICS = gql`
           likes
           conversations
         }
+      }
+      recentActivity {
+        date
+        views
+        likes
+        messages
+        conversations
+      }
+      recentTransactions {
+        id
+        amount
+        status
+        currency
+        reference
+        description
+        type
+        timestamp
+        userId
+        userName
+        userAvatar
       }
     }
   }

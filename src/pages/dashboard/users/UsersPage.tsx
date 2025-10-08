@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from "react";
 import { useQuery, useMutation } from "@apollo/client";
+import { useDebounce } from "@/hooks/useDebounce";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import {
@@ -24,14 +25,30 @@ import {
 } from "../../../components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { DataTable } from "../../../components/ui/datatable";
-import { GET_ALL_USERS, UPDATE_USER_STATUS } from "../../../graphql/queries/users";
+import {
+  GET_ALL_USERS,
+  UPDATE_USER_STATUS,
+} from "../../../graphql/queries/users";
 import type { User } from "../../../types/auth";
 import { Link } from "react-router-dom";
 import { formatGraphQLError } from "../../../util/formatGraphQlError";
+import type { RoleEnum, UserStatus } from "@/types/enums";
+
+export class AdminUserFilters {
+  role?: RoleEnum;
+  status?: UserStatus;
+  isVerified?: boolean;
+  isActive?: boolean;
+  createdAfter?: Date;
+  createdBefore?: Date;
+  search?: string;
+}
 
 export default function UsersPage() {
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState({});
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   // Clean filters to remove null or undefined values
   const cleanFilters = (filters: any) => {
@@ -48,7 +65,10 @@ export default function UsersPage() {
     variables: {
       page: currentPage,
       limit: 20,
-      filters: cleanFilters(filters), // Use cleaned filters
+      filters: {
+        ...cleanFilters(filters),
+        search: debouncedSearchTerm || undefined,
+      },
     },
   });
 
@@ -208,10 +228,27 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Users</h1>
           <p className="text-gray-600">Manage platform users</p>
+        </div>
+        <div className="relative w-full md:w-80">
+          <input
+            type="text"
+            placeholder="Search users..."
+            className="w-full pl-3 pr-10 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <button
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              onClick={() => setSearchTerm("")}
+            >
+              ×
+            </button>
+          )}
         </div>
       </div>
 
@@ -279,6 +316,7 @@ export default function UsersPage() {
         searchable
         searchPlaceholder="Search users..."
         loading={loading}
+        result={searchTerm ? "No user found with the search" : "No user found"}
         pagination={{
           currentPage,
           totalPages: data?.getAllUsers?.pagination?.totalPages || 1,

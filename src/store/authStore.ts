@@ -82,36 +82,58 @@ export const useAuthStore = create<AuthState>()(
 
       setUser: (user) => set({ user }),
       initializeAuth: async () => {
+        // Don't reinitialize if already loading
+        if (get().isLoading) return;
+        
         set({ isLoading: true });
         const token = localStorage.getItem("auth-token");
         const refreshToken = localStorage.getItem("refresh-token");
 
         if (!token || !refreshToken) {
-          set({ isLoading: false });
-          // get().logout();
-          // window.location.href = "/auth/login";
+          set({ 
+            user: null,
+            token: null,
+            refreshToken: null,
+            isAuthenticated: false,
+            isLoading: false 
+          });
           return;
         }
 
         try {
+          // Set the token in Apollo client before making the request
+          apolloClient.cache.reset();
+          
           const { data } = await apolloClient.query({
             query: GET_CURRENT_USER,
             fetchPolicy: "network-only",
+            errorPolicy: 'all'
           });
 
-          set({
-            user: data.me,
-            token,
-            refreshToken,
-            isAuthenticated: true,
-          });
-
-          scheduleTokenRefresh(refreshToken, get().login);
+          if (data?.me) {
+            set({
+              user: data.me,
+              token,
+              refreshToken,
+              isAuthenticated: true,
+              isLoading: false
+            });
+            scheduleTokenRefresh(refreshToken, get().login);
+          } else {
+            throw new Error('No user data received');
+          }
         } catch (err) {
           console.warn("Auth initialization failed", err);
-          get().logout();
-        } finally {
-          set({ isLoading: false });
+          // Don't log out here, just reset to unauthenticated state
+          set({
+            user: null,
+            token: null,
+            refreshToken: null,
+            isAuthenticated: false,
+            isLoading: false
+          });
+          localStorage.removeItem("auth-token");
+          localStorage.removeItem("refresh-token");
         }
       },
     }),

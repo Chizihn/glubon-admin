@@ -1,768 +1,526 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-"use client";
-
+import { useParams } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../../../components/ui/card";
-import { Button } from "../../../components/ui/button";
-import { Badge } from "../../../components/ui/badge";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../../../components/ui/tabs";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "../../../components/ui/avatar";
-import {
-  MapPin,
-  Bed,
-  Bath,
-  Square,
-  Eye,
-  MessageSquare,
-  Heart,
+  ArrowLeft,
   Star,
-  Edit,
+  Ban,
   CheckCircle,
   XCircle,
-  AlertTriangle,
-  TrendingUp,
-  DollarSign,
+  MapPin,
+  Calendar,
+  Eye,
+  Heart,
+  MessageCircle,
 } from "lucide-react";
+import { Link } from "react-router-dom";
+
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-} from "recharts";
-import { toast } from "sonner";
-import { useNavigate, useParams } from "react-router-dom";
-import { GET_LISTING_BY_ID } from "../../../graphql/queries/listings";
-import {
-  TOGGLE_PROPERTY_FEATURED,
   UPDATE_PROPERTY_STATUS,
-} from "../../../graphql/mutations/listings";
+  TOGGLE_PROPERTY_FEATURED,
+} from "@/graphql/mutations/properties";
+import { GET_LISTING_BY_ID } from "@/graphql/queries/listings";
 
-export default function ListingDetailsPage() {
-  const params = useParams();
-  const navigate = useNavigate();
-  const listingId = params.id as string;
+// Define PropertyStatus enum
+enum PropertyStatus {
+  ACTIVE = "ACTIVE",
+  PENDING = "PENDING",
+  REJECTED = "REJECTED",
+  SUSPENDED = "SUSPENDED",
+}
 
-  const { data, loading, refetch } = useQuery(GET_LISTING_BY_ID, {
-    variables: { listingId },
-  });
+// Define the Property type based on the provided data
+interface Property {
+  id: string;
+  title: string;
+  description: string;
+  status: PropertyStatus;
+  featured: boolean;
+  amount: number;
+  pricePer: string;
+  priceUnit: string;
+  propertyType: string;
+  listingType: string;
+  rentalPeriod: string;
+  roomType: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  sqft?: number | null;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  amenities: string[];
+  isForStudents: boolean;
+  isFurnished: boolean;
+  ownershipVerified: boolean;
+  visitingDays: string[];
+  visitingTimeStart: string;
+  visitingTimeEnd: string;
+  owner: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string;
+  };
+  images: string[];
+  viewsCount: number;
+  likesCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
 
-  const [updateListingStatus] = useMutation(UPDATE_PROPERTY_STATUS);
-  const [toggleFeatured] = useMutation(TOGGLE_PROPERTY_FEATURED);
+// Define the valid transitions type using Record
+type ValidTransitions = Record<PropertyStatus, PropertyStatus[]>;
 
-  const listing = data?.getProperty;
+export default function ListingDetailPage() {
+  const { id } = useParams<{ id: string }>();
 
-  const handleStatusUpdate = async (status: string) => {
+  const { data, loading, refetch } = useQuery<{ getProperty: Property }>(
+    GET_LISTING_BY_ID,
+    {
+      variables: { getPropertyId: id },
+      skip: !id,
+      fetchPolicy: "network-only",
+    }
+  );
+
+  const [updatePropertyStatus] = useMutation(UPDATE_PROPERTY_STATUS);
+  const [togglePropertyFeatured] = useMutation(TOGGLE_PROPERTY_FEATURED);
+
+  const property = data?.getProperty;
+
+  // Define valid state transitions
+  const validTransitions: ValidTransitions = {
+    [PropertyStatus.PENDING]: [PropertyStatus.ACTIVE, PropertyStatus.REJECTED],
+    [PropertyStatus.ACTIVE]: [
+      PropertyStatus.SUSPENDED,
+      PropertyStatus.REJECTED,
+    ],
+    [PropertyStatus.SUSPENDED]: [
+      PropertyStatus.ACTIVE,
+      PropertyStatus.REJECTED,
+    ],
+    [PropertyStatus.REJECTED]: [PropertyStatus.PENDING],
+  };
+
+  const handleStatusUpdate = async (status: PropertyStatus) => {
     try {
-      await updateListingStatus({
+      const result = await updatePropertyStatus({
         variables: {
-          input: {
-            propertyId: listingId,
-            status,
-          },
+          input: { propertyId: id, status },
         },
       });
-      toast.success("Listing status updated successfully");
-      refetch();
-    } catch (error: any) {
-      toast.error(error.message || "An error occurred");
+
+      if (result.data?.updatePropertyStatus?.success) {
+        toast.success(`Property status updated to ${status}`);
+        refetch();
+      } else {
+        toast.error("Failed to update property status");
+      }
+    } catch (error) {
+      console.error("Status update error:", error);
+      toast.error("An error occurred while updating status");
     }
   };
 
   const handleToggleFeatured = async () => {
     try {
-      await toggleFeatured({
-        variables: { id: listingId },
+      const result = await togglePropertyFeatured({
+        variables: { propertyId: id },
       });
-      toast.success("Listing featured status updated");
-      refetch();
-    } catch (error: any) {
-      toast.error(error.message || "An error occurred");
+
+      if (result.data?.togglePropertyFeatured?.success) {
+        toast.success("Property featured status updated");
+        refetch();
+      } else {
+        toast.error("Failed to update featured status");
+      }
+    } catch (error) {
+      console.error("Featured toggle error:", error);
+      toast.error("An error occurred while updating featured status");
     }
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="h-8 bg-gray-200 rounded animate-pulse" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="h-64 bg-gray-200 rounded animate-pulse" />
-            <div className="h-96 bg-gray-200 rounded animate-pulse" />
-          </div>
-          <div className="space-y-6">
-            <div className="h-48 bg-gray-200 rounded animate-pulse" />
-            <div className="h-32 bg-gray-200 rounded animate-pulse" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!listing) {
-    return (
-      <div className="text-center py-12">
-        <h2 className="text-2xl font-bold text-gray-900">Listing not found</h2>
-        <p className="text-gray-600 mt-2">
-          The listing you&apos;re looking for doesn&apos;t exist.
-        </p>
-        <Button
-          onClick={() => navigate("/dashboard/listings")}
-          className="mt-4"
-        >
-          Go Back
-        </Button>
-      </div>
-    );
-  }
-
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: PropertyStatus) => {
     switch (status) {
-      case "ACTIVE":
+      case PropertyStatus.ACTIVE:
         return "bg-green-100 text-green-800";
-      case "PENDING_REVIEW":
+      case PropertyStatus.PENDING:
         return "bg-yellow-100 text-yellow-800";
-      case "REJECTED":
+      case PropertyStatus.REJECTED:
         return "bg-red-100 text-red-800";
-      case "SUSPENDED":
-        return "bg-orange-100 text-orange-800";
-      case "RENTED":
-        return "bg-blue-100 text-blue-800";
-      case "PENDING_BOOKING":
-        return "bg-purple-100 text-purple-800";
-      case "DRAFT":
-      case "INACTIVE":
+      case PropertyStatus.SUSPENDED:
         return "bg-gray-100 text-gray-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!property) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-xl font-semibold text-gray-900">
+          Property not found
+        </h2>
+        <p className="text-gray-600 mt-2">
+          The property you're looking for doesn't exist.
+        </p>
+        <Link to="/dashboard/listings">
+          <Button className="mt-4">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Listings
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  // Map data fields to match component expectations
+  const isFeatured = property.featured;
+  const price = property.amount;
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            {listing.title}
-          </h1>
-          <div className="flex items-center space-x-4 text-gray-600">
-            <div className="flex items-center">
-              <MapPin className="h-4 w-4 mr-1" />
-              {listing.address}, {listing.city}, {listing.state}
-            </div>
-            <div className="flex items-center space-x-2">
-              <Badge className={getStatusColor(listing.status)}>
-                {listing.status.replace("_", " ")}
-              </Badge>
-              {listing.featured && (
-                <Badge className="bg-yellow-100 text-yellow-800">
-                  <Star className="h-3 w-3 mr-1" />
-                  Featured
-                </Badge>
-              )}
-              {listing.ownershipVerified && (
-                <Badge className="bg-blue-100 text-blue-800">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Verified
-                </Badge>
-              )}
-            </div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Link to="/dashboard/listings">
+            <Button variant="outline" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {property.title}
+            </h1>
+            <p className="text-gray-600">Property Details</p>
           </div>
         </div>
-
-        <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            onClick={() => navigate(`/dashboard/listings/${listingId}/edit`)}
-          >
-            <Edit className="h-4 w-4 mr-2" />
-            Edit Listing
-          </Button>
-
-          <Button variant="outline" onClick={handleToggleFeatured}>
-            <Star className="h-4 w-4 mr-2" />
-            {listing.featured ? "Remove Featured" : "Make Featured"}
-          </Button>
-
-          {listing.status === "PENDING_REVIEW" ? (
-            <div className="flex space-x-2">
-              <Button onClick={() => handleStatusUpdate("ACTIVE")}>
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Approve
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => handleStatusUpdate("REJECTED")}
-              >
-                <XCircle className="h-4 w-4 mr-2" />
-                Reject
-              </Button>
-            </div>
-          ) : listing.status === "ACTIVE" ? (
-            <Button
-              variant="destructive"
-              onClick={() => handleStatusUpdate("SUSPENDED")}
-            >
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              Suspend
-            </Button>
-          ) : (
-            <Button onClick={() => handleStatusUpdate("ACTIVE")}>
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Activate
-            </Button>
+        <div className="flex items-center space-x-2">
+          <Badge className={getStatusColor(property.status)}>
+            {property.status}
+          </Badge>
+          {isFeatured && (
+            <Badge className="bg-purple-100 text-purple-800">Featured</Badge>
           )}
         </div>
       </div>
 
+      {/* Actions */}
+      <div className="flex space-x-2">
+        {validTransitions[property.status]?.includes(PropertyStatus.ACTIVE) && (
+          <Button
+            onClick={() => handleStatusUpdate(PropertyStatus.ACTIVE)}
+            className="bg-green-600 hover:bg-green-700"
+            disabled={property.status === PropertyStatus.ACTIVE}
+          >
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Approve
+          </Button>
+        )}
+        {validTransitions[property.status]?.includes(
+          PropertyStatus.REJECTED
+        ) && (
+          <Button
+            onClick={() => handleStatusUpdate(PropertyStatus.REJECTED)}
+            variant="destructive"
+            disabled={property.status === PropertyStatus.REJECTED}
+          >
+            <XCircle className="h-4 w-4 mr-2" />
+            Reject
+          </Button>
+        )}
+        {validTransitions[property.status]?.includes(
+          PropertyStatus.SUSPENDED
+        ) && (
+          <Button
+            onClick={() => handleStatusUpdate(PropertyStatus.SUSPENDED)}
+            variant="outline"
+            disabled={property.status === PropertyStatus.SUSPENDED}
+          >
+            <Ban className="h-4 w-4 mr-2" />
+            Suspend
+          </Button>
+        )}
+        <Button onClick={handleToggleFeatured} variant="outline">
+          <Star className="h-4 w-4 mr-2" />
+          {isFeatured ? "Remove Featured" : "Make Featured"}
+        </Button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
-        <div className="lg:col-span-2">
-          <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
-              <TabsTrigger value="inquiries">Inquiries</TabsTrigger>
-              <TabsTrigger value="history">History</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview" className="space-y-6">
-              {/* Images */}
-              <Card>
-                <CardContent className="p-0">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
-                    <div className="relative md:col-span-2">
-                      <img
-                        src={listing.images?.[0] || "/placeholder.svg"}
-                        alt={listing.title}
-                        className="w-full h-64 object-cover rounded-lg"
-                      />
-                    </div>
-                    {listing.images
-                      ?.slice(1, 5)
-                      .map((image: string, index: number) => (
-                        <div key={index} className="relative">
-                          <img
-                            src={image || "/placeholder.svg"}
-                            alt={`${listing.title} ${index + 2}`}
-                            className="w-full h-32 object-cover rounded-lg"
-                          />
-                        </div>
-                      ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Property Details */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Property Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="flex items-center space-x-2">
-                      <Bed className="h-5 w-5 text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-600">Bedrooms</p>
-                        <p className="font-medium">{listing.bedrooms}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Bath className="h-5 w-5 text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-600">Bathrooms</p>
-                        <p className="font-medium">{listing.bathrooms}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Square className="h-5 w-5 text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-600">Area</p>
-                        <p className="font-medium">
-                          {listing.sqft || "N/A"} sqft
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <DollarSign className="h-5 w-5 text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-600">Price</p>
-                        <p className="font-medium">
-                          ₦{listing.amount.toLocaleString()} /{" "}
-                          {listing.rentalPeriod.toLowerCase()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-medium mb-2">Description</h4>
-                    <p className="text-gray-600">{listing.description}</p>
-                  </div>
-
-                  {listing.amenities && listing.amenities.length > 0 && (
-                    <div>
-                      <h4 className="font-medium mb-2">Amenities</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {listing.amenities.map(
-                          (amenity: string, index: number) => (
-                            <Badge key={index} variant="outline">
-                              {amenity}
-                            </Badge>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  <div>
-                    <h4 className="font-medium mb-2">Visiting Information</h4>
-                    <p className="text-gray-600">
-                      Days: {listing.visitingDays.join(", ")}
-                    </p>
-                    <p className="text-gray-600">
-                      Time: {listing.visitingTimeStart} -{" "}
-                      {listing.visitingTimeEnd}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Lister Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Lister Information</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center space-x-4">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage
-                        src={listing.owner.profilePic || "/placeholder.svg"}
-                      />
-                      <AvatarFallback>
-                        {listing.owner.firstName?.[0]}
-                        {listing.owner.lastName?.[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <h4 className="font-medium">
-                        {listing.owner.firstName} {listing.owner.lastName}
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        {listing.owner.email}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {listing.owner.phoneNumber}
-                      </p>
-                      <div className="flex items-center space-x-2 mt-1">
-                        {listing.owner.isVerified && (
-                          <Badge className="bg-green-100 text-green-800">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Verified
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        navigate(`/dashboard/users/${listing.owner.id}`)
-                      }
-                    >
-                      View Profile
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="analytics" className="space-y-6">
-              {/* Performance Metrics */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-600">Total Views</p>
-                        <p className="text-2xl font-bold">
-                          {listing.stats?.views || 0}
-                        </p>
-                      </div>
-                      <Eye className="h-8 w-8 text-blue-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-600">Inquiries</p>
-                        <p className="text-2xl font-bold">
-                          {listing.stats?.conversations || 0}
-                        </p>
-                      </div>
-                      <MessageSquare className="h-8 w-8 text-green-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-600">Likes</p>
-                        <p className="text-2xl font-bold">
-                          {listing.stats?.likes || 0}
-                        </p>
-                      </div>
-                      <Heart className="h-8 w-8 text-purple-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-600">Conversion Rate</p>
-                        <p className="text-2xl font-bold">
-                          {listing.stats?.conversionRate || 0}%
-                        </p>
-                      </div>
-                      <TrendingUp className="h-8 w-8 text-orange-500" />
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Analytics Charts */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Views Over Time</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={listing.detailedStats?.dailyViews || []}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <Tooltip />
-                        <Line
-                          type="monotone"
-                          dataKey="views"
-                          stroke="#3b82f6"
-                          strokeWidth={2}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="uniqueViews"
-                          stroke="#10b981"
-                          strokeWidth={2}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Inquiries Over Time</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart
-                        data={listing.detailedStats?.dailyInquiries || []}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="inquiries" fill="#8b5cf6" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Traffic Sources */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Traffic Sources</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {listing.detailedStats?.trafficSources?.map(
-                      (source: any, index: number) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between"
-                        >
-                          <span className="font-medium">{source.source}</span>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm text-gray-600">
-                              {source.visits} visits
-                            </span>
-                            <span className="text-sm text-gray-500">
-                              ({source.percentage}%)
-                            </span>
-                          </div>
-                        </div>
-                      )
-                    ) || (
-                      <p className="text-center text-gray-500 py-4">
-                        No traffic data available
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="inquiries">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Inquiries</CardTitle>
-                  <CardDescription>
-                    Messages and inquiries about this listing
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {listing.conversations?.map((conversation: any) => (
-                      <div
-                        key={conversation.id}
-                        className="border rounded-lg p-4"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start space-x-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback>
-                                {conversation.user.firstName?.[0]}
-                                {conversation.user.lastName?.[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <h4 className="font-medium">
-                                {conversation.user.firstName}{" "}
-                                {conversation.user.lastName}
-                              </h4>
-                              <p className="text-sm text-gray-600">
-                                {conversation.user.email}
-                              </p>
-                              <p className="text-sm text-gray-700 mt-2">
-                                {conversation.latestMessage}
-                              </p>
-                            </div>
-                          </div>
-                          <span className="text-xs text-gray-500">
-                            {new Date(conversation.updatedAt).toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                    )) || (
-                      <div className="text-center py-8 text-gray-500">
-                        <MessageSquare className="mx-auto h-12 w-12 text-gray-400 mb-2" />
-                        <p>No inquiries yet</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="history">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Listing History</CardTitle>
-                  <CardDescription>
-                    Timeline of changes and activities
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {listing.moderationHistory?.map((history: any) => (
-                      <div
-                        key={history.id}
-                        className="flex items-start space-x-3 border-b pb-3"
-                      >
-                        <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-2" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">
-                            {history.action}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {history.reason}
-                          </p>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <span className="text-xs text-gray-500">
-                              by {history.moderator?.name || "System"}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {new Date(history.createdAt).toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )) || (
-                      <p className="text-center text-gray-500 py-8">
-                        No history available
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Quick Stats */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Images */}
           <Card>
             <CardHeader>
-              <CardTitle>Quick Stats</CardTitle>
+              <CardTitle>Property Images</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Views Today</span>
-                <span className="font-medium">
-                  {listing.stats?.viewsToday || 0}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Views This Week</span>
-                <span className="font-medium">
-                  {listing.stats?.viewsThisWeek || 0}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Inquiries Today</span>
-                <span className="font-medium">
-                  {listing.stats?.inquiriesToday || 0}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">
-                  Inquiries This Week
-                </span>
-                <span className="font-medium">
-                  {listing.stats?.inquiriesThisWeek || 0}
-                </span>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {property.images?.map((image: string, index: number) => (
+                  <img
+                    key={index}
+                    src={image}
+                    alt={`Property ${index + 1}`}
+                    className="w-full h-32 object-cover rounded-lg"
+                  />
+                ))}
               </div>
             </CardContent>
           </Card>
 
-          {/* Performance Comparison */}
-          {listing.performanceComparison && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Performance Comparison</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">
-                    Avg Views in Area
-                  </span>
-                  <span className="font-medium">
-                    {listing.performanceComparison.averageViewsInArea}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">
-                    Avg Price in Area
-                  </span>
-                  <span className="font-medium">
-                    ₦
-                    {listing.performanceComparison.averagePriceInArea.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Market Position</span>
-                  <Badge variant="outline">
-                    {listing.performanceComparison.marketPosition}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Similar Listings */}
-          {listing.similarListings && listing.similarListings.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Similar Listings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {listing.similarListings.map((similar: any) => (
-                  <div key={similar.id} className="flex items-center space-x-3">
-                    <div className="relative">
-                      <img
-                        src={similar.images?.[0] || "/placeholder.svg"}
-                        alt={similar.title}
-                        className="w-12 h-12 rounded object-cover"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm truncate">
-                        {similar.title}
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        {similar.address}, {similar.city}, {similar.state}
-                      </p>
-                      <p className="text-xs font-medium">
-                        ₦{similar.amount.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Actions */}
+          {/* Description */}
           <Card>
             <CardHeader>
-              <CardTitle>Actions</CardTitle>
+              <CardTitle>Description</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-700 whitespace-pre-wrap">
+                {property.description}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Location */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <MapPin className="h-5 w-5 mr-2" />
+                Location
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-700">
+                {property.address}, {property.city}, {property.state},{" "}
+                {property.country}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Amenities */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Amenities</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {property.amenities.length > 0 ? (
+                <ul className="list-disc pl-5 text-gray-700">
+                  {property.amenities.map((amenity, index) => (
+                    <li key={index}>{amenity}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-700">No amenities listed</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Property Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Property Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Price</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {property.priceUnit} {price?.toLocaleString()} /{" "}
+                  {property.pricePer}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">
+                  Listing Type
+                </p>
+                <p className="text-gray-900">{property.listingType}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">
+                  Rental Period
+                </p>
+                <p className="text-gray-900">{property.rentalPeriod}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Room Type</p>
+                <p className="text-gray-900">{property.roomType}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">
+                  Property Type
+                </p>
+                <p className="text-gray-900">{property.propertyType}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Bedrooms</p>
+                  <p className="text-gray-900">{property.bedrooms || "N/A"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Bathrooms</p>
+                  <p className="text-gray-900">{property.bathrooms || "N/A"}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Area</p>
+                <p className="text-gray-900">
+                  {property.sqft ? `${property.sqft} sqft` : "N/A"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Property Features */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Property Features</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full justify-start">
-                <Eye className="h-4 w-4 mr-2" />
-                View Public Page
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <TrendingUp className="h-4 w-4 mr-2" />
-                Boost Listing
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Contact Lister
-              </Button>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-gray-500">
+                  For Students
+                </p>
+                <p className="text-gray-900">
+                  {property.isForStudents ? "Yes" : "No"}
+                </p>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-gray-500">Furnished</p>
+                <p className="text-gray-900">
+                  {property.isFurnished ? "Yes" : "No"}
+                </p>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-gray-500">
+                  Ownership Verified
+                </p>
+                <p className="text-gray-900">
+                  {property.ownershipVerified ? "Yes" : "No"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Visiting Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Visiting Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div>
+                <p className="text-sm font-medium text-gray-500">
+                  Visiting Days
+                </p>
+                <p className="text-gray-900">
+                  {property.visitingDays.length > 0
+                    ? property.visitingDays.join(", ")
+                    : "Not specified"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">
+                  Visiting Hours
+                </p>
+                <p className="text-gray-900">
+                  {property.visitingTimeStart && property.visitingTimeEnd
+                    ? `${property.visitingTimeStart} - ${property.visitingTimeEnd}`
+                    : "Not specified"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Owner Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Property Owner</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p className="font-medium text-gray-900">
+                {property.owner?.firstName} {property.owner?.lastName}
+              </p>
+              <p className="text-sm text-gray-600">{property.owner?.email}</p>
+              <p className="text-sm text-gray-600">
+                {property.owner?.phoneNumber}
+              </p>
+              <Link to={`/dashboard/users/${property.owner?.id}`}>
+                <Button variant="outline" size="sm" className="mt-2">
+                  View Profile
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          {/* Engagement Stats */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Engagement Stats</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Eye className="h-4 w-4 text-gray-500 mr-2" />
+                  <span className="text-sm text-gray-600">Views</span>
+                </div>
+                <span className="font-medium">{property.viewsCount || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Heart className="h-4 w-4 text-gray-500 mr-2" />
+                  <span className="text-sm text-gray-600">Likes</span>
+                </div>
+                <span className="font-medium">{property.likesCount || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <MessageCircle className="h-4 w-4 text-gray-500 mr-2" />
+                  <span className="text-sm text-gray-600">Inquiries</span>
+                </div>
+                <span className="font-medium">0</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Dates */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Calendar className="h-5 w-5 mr-2" />
+                Important Dates
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Created</p>
+                <p className="text-sm text-gray-900">
+                  {new Date(property.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">
+                  Last Updated
+                </p>
+                <p className="text-sm text-gray-900">
+                  {new Date(property.updatedAt).toLocaleDateString()}
+                </p>
+              </div>
             </CardContent>
           </Card>
         </div>

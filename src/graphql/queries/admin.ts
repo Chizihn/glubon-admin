@@ -8,12 +8,9 @@ export const GET_ADMIN_USERS = gql`
         firstName
         lastName
         email
-        provider
         isActive
         phoneNumber
         profilePic
-        isVerified
-        role
         status
         address
         city

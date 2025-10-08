@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-"use client";
-
+import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation } from "@apollo/client";
 import {
   Card,
@@ -8,53 +6,33 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "../../../components/ui/card";
-import { Button } from "../../../components/ui/button";
-import { Badge } from "../../../components/ui/badge";
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { toast } from "sonner";
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../../../components/ui/tabs";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "../../../components/ui/avatar";
-import {
+  ArrowLeft,
   User,
   Mail,
   Phone,
   MapPin,
   Calendar,
-  Activity,
-  Building2,
-  MessageSquare,
-  CreditCard,
   Shield,
-  Edit,
+  Building2,
+  CreditCard,
+  Activity,
   Ban,
   CheckCircle,
 } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
-import {
-  GET_USER_BY_ID,
-  UPDATE_USER_STATUS,
-} from "../../../graphql/queries/users";
-import { toast } from "sonner";
-import { formatGraphQLError } from "../../../util/formatGraphQlError";
-import { DataTable } from "../../../components/ui/datatable";
-import type { Property } from "../../../types/property";
-import PageRouter from "../../../components/layouts/PageRouter";
+import { GET_USER_BY_ID, UPDATE_USER_STATUS } from "@/graphql/queries/users";
 
 export default function UserDetailsPage() {
-  const params = useParams();
-  const navigate = useNavigate();
-  const userId = params.id as string;
+  const { id } = useParams<{ id: string }>();
 
   const { data, loading, refetch } = useQuery(GET_USER_BY_ID, {
-    variables: { userId },
+    variables: { userId: id },
+    skip: !id,
   });
 
   const [updateUserStatus] = useMutation(UPDATE_USER_STATUS);
@@ -63,60 +41,23 @@ export default function UserDetailsPage() {
 
   const handleStatusUpdate = async (status: string) => {
     try {
-      await updateUserStatus({
+      const result = await updateUserStatus({
         variables: {
-          input: {
-            userId,
-            status,
-          },
+          input: { userId: id, status },
         },
       });
 
-      toast.success("User status updated successfully");
-
-      refetch();
+      if (result.data?.updateUserStatus?.success) {
+        toast.success("User status updated successfully");
+        refetch();
+      } else {
+        toast.error("Failed to update user status");
+      }
     } catch (error) {
-      const errMsg = formatGraphQLError(error);
-      toast.error(errMsg || "Failed to update user status");
-      console.error("Update user status error:", errMsg);
+      console.error("Status update error:", error);
+      toast.error("An error occurred while updating status");
     }
   };
-
-  if (loading) {
-    return (
-      <div className="space-y-8">
-        <PageRouter parentPath="/dashboard/users" parentLabel="Back to users" />
-        <div className="space-y-6">
-          <div className="h-8 bg-gray-200 rounded animate-pulse" />
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="h-64 bg-gray-200 rounded animate-pulse" />
-              <div className="h-96 bg-gray-200 rounded animate-pulse" />
-            </div>
-            <div className="space-y-6">
-              <div className="h-48 bg-gray-200 rounded animate-pulse" />
-              <div className="h-32 bg-gray-200 rounded animate-pulse" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="text-center py-12 spac-y-6">
-        <PageRouter parentPath="/dashboard/users" parentLabel="Back to users" />
-        <h2 className="text-2xl font-bold text-gray-900">User not found</h2>
-        <p className="text-gray-600 mt-2">
-          The user you're looking for doesn't exist.
-        </p>
-        <Button onClick={() => navigate(-1)} className="mt-4">
-          Go Back
-        </Button>
-      </div>
-    );
-  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -131,78 +72,59 @@ export default function UserDetailsPage() {
     }
   };
 
-  const listingColumns = [
-    {
-      key: "title",
-      label: "Title",
-      render: (title: string, listing: Property) => (
-        <div className="flex items-center space-x-3">
-          <img
-            src={listing.images?.[0] || "/placeholder.svg"}
-            alt={title}
-            className="w-10 h-10 rounded object-cover"
-          />
-          <span className="font-medium">{title}</span>
-        </div>
-      ),
-    },
-    {
-      key: "status",
-      label: "Status",
-      render: (status: string) => (
-        <Badge className={getStatusColor(status)}>{status}</Badge>
-      ),
-    },
-    {
-      key: "views",
-      label: "Views",
-    },
-    {
-      key: "inquiries",
-      label: "Inquiries",
-    },
-    {
-      key: "createdAt",
-      label: "Created",
-      render: (date: string) => new Date(date).toLocaleDateString(),
-    },
-  ];
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case "LISTER":
+        return "bg-blue-100 text-blue-800";
+      case "RENTER":
+        return "bg-gray-100 text-gray-800";
+      case "ADMIN":
+        return "bg-purple-100 text-purple-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
 
-  const transactionColumns = [
-    {
-      key: "type",
-      label: "Type",
-      render: (type: string) => type.replace("_", " "),
-    },
-    {
-      key: "amount",
-      label: "Amount",
-      render: (amount: number) => `₦${amount.toLocaleString()}`,
-    },
-    {
-      key: "status",
-      label: "Status",
-      render: (status: string) => (
-        <Badge className={getStatusColor(status)}>{status}</Badge>
-      ),
-    },
-    {
-      key: "createdAt",
-      label: "Date",
-      render: (date: string) => new Date(date).toLocaleDateString(),
-    },
-  ];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-xl font-semibold text-gray-900">User not found</h2>
+        <p className="text-gray-600 mt-2">
+          The user you're looking for doesn't exist.
+        </p>
+        <Link to="/dashboard/users">
+          <Button className="mt-4">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Users
+          </Button>
+        </Link>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8">
-      <PageRouter parentPath="/dashboard/users" parentLabel="Back to users" />
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-start">
-          <div className="flex items-center space-x-4">
-            <Avatar className="h-16 w-16">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Link to="/dashboard/users">
+            <Button variant="outline" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+          </Link>
+          <div className="flex items-center space-x-3">
+            <Avatar className="h-12 w-12">
               <AvatarImage src={user.profilePic || "/placeholder.svg"} />
-              <AvatarFallback className="text-lg">
+              <AvatarFallback>
                 {user.firstName?.[0]}
                 {user.lastName?.[0]}
               </AvatarFallback>
@@ -212,401 +134,260 @@ export default function UserDetailsPage() {
                 {user.firstName} {user.lastName}
               </h1>
               <p className="text-gray-600">{user.email}</p>
-              <div className="flex items-center space-x-2 mt-1">
-                <Badge className={getStatusColor(user.status)}>
-                  {user.status}
-                </Badge>
-                {user.isVerified && (
-                  <Badge className="bg-blue-100 text-blue-800">
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Verified
-                  </Badge>
-                )}
-              </div>
             </div>
           </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Badge className={getStatusColor(user.status)}>{user.status}</Badge>
+          <Badge className={getRoleColor(user.role)}>{user.role}</Badge>
+          {user.isVerified && (
+            <Badge className="bg-green-100 text-green-800">Verified</Badge>
+          )}
+        </div>
+      </div>
 
-          <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              onClick={() => navigate(`/dashboard/users/${userId}/edit`)}
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Edit User
-            </Button>
+      {/* Actions */}
+      <div className="flex space-x-2">
+        <Button
+          onClick={() => handleStatusUpdate("ACTIVE")}
+          disabled={user.status === "ACTIVE"}
+          className="bg-green-600 hover:bg-green-700"
+        >
+          <CheckCircle className="h-4 w-4 mr-2" />
+          Activate
+        </Button>
+        <Button
+          onClick={() => handleStatusUpdate("SUSPENDED")}
+          disabled={user.status === "SUSPENDED"}
+          variant="outline"
+        >
+          <Ban className="h-4 w-4 mr-2" />
+          Suspend
+        </Button>
+        <Button
+          onClick={() => handleStatusUpdate("BANNED")}
+          disabled={user.status === "BANNED"}
+          variant="destructive"
+        >
+          <Ban className="h-4 w-4 mr-2" />
+          Ban
+        </Button>
+      </div>
 
-            {user.status === "ACTIVE" ? (
-              <Button
-                variant="destructive"
-                onClick={() => handleStatusUpdate("SUSPENDED")}
-              >
-                <Ban className="h-4 w-4 mr-2" />
-                Suspend
-              </Button>
-            ) : (
-              <Button onClick={() => handleStatusUpdate("ACTIVE")}>
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Activate
-              </Button>
-            )}
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Personal Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <User className="h-5 w-5 mr-2" />
+                Personal Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">
+                    First Name
+                  </p>
+                  <p className="text-gray-900">{user.firstName}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Last Name</p>
+                  <p className="text-gray-900">{user.lastName}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Email</p>
+                  <div className="flex items-center">
+                    <Mail className="h-4 w-4 text-gray-400 mr-2" />
+                    <p className="text-gray-900">{user.email}</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Phone</p>
+                  <div className="flex items-center">
+                    <Phone className="h-4 w-4 text-gray-400 mr-2" />
+                    <p className="text-gray-900">{user.phoneNumber || "N/A"}</p>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Address</p>
+                <div className="flex items-start">
+                  <MapPin className="h-4 w-4 text-gray-400 mr-2 mt-0.5" />
+                  <div>
+                    <p className="text-gray-900">{user.address || "N/A"}</p>
+                    <p className="text-sm text-gray-600">
+                      {user.city && user.state
+                        ? `${user.city}, ${user.state}`
+                        : "N/A"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Account Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Shield className="h-5 w-5 mr-2" />
+                Account Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">
+                    Account Type
+                  </p>
+                  <Badge className={getRoleColor(user.role)}>{user.role}</Badge>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Status</p>
+                  <Badge className={getStatusColor(user.status)}>
+                    {user.status}
+                  </Badge>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Verified</p>
+                  <Badge
+                    className={
+                      user.isVerified
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
+                    }
+                  >
+                    {user.isVerified ? "Yes" : "No"}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Active</p>
+                  <Badge
+                    className={
+                      user.isActive
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
+                    }
+                  >
+                    {user.isActive ? "Yes" : "No"}
+                  </Badge>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Provider</p>
+                <p className="text-gray-900">{user.provider || "EMAIL"}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Activity Summary */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Activity className="h-5 w-5 mr-2" />
+                Activity Summary
+              </CardTitle>
+              <CardDescription>
+                User engagement and activity metrics
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                  <Building2 className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                  <p className="text-2xl font-bold text-blue-600">0</p>
+                  <p className="text-sm text-gray-600">Properties Listed</p>
+                </div>
+                <div className="text-center p-4 bg-green-50 rounded-lg">
+                  <CreditCard className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                  <p className="text-2xl font-bold text-green-600">0</p>
+                  <p className="text-sm text-gray-600">Transactions</p>
+                </div>
+                <div className="text-center p-4 bg-purple-50 rounded-lg">
+                  <Mail className="h-8 w-8 text-purple-600 mx-auto mb-2" />
+                  <p className="text-2xl font-bold text-purple-600">0</p>
+                  <p className="text-sm text-gray-600">Messages</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-2">
-            <Tabs defaultValue="overview" className="space-y-6">
-              <TabsList>
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="listings">Listings</TabsTrigger>
-                <TabsTrigger value="transactions">Transactions</TabsTrigger>
-                <TabsTrigger value="conversations">Conversations</TabsTrigger>
-                <TabsTrigger value="activity">Activity</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="overview" className="space-y-6">
-                {/* Basic Information */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Basic Information</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="flex items-center space-x-3">
-                        <User className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <p className="text-sm text-gray-600">Full Name</p>
-                          <p className="font-medium">
-                            {user.firstName} {user.lastName}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-3">
-                        <Mail className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <p className="text-sm text-gray-600">Email</p>
-                          <p className="font-medium">{user.email}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-3">
-                        <Phone className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <p className="text-sm text-gray-600">Phone</p>
-                          <p className="font-medium">
-                            {user.phoneNumber || "Not provided"}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-3">
-                        <MapPin className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <p className="text-sm text-gray-600">Location</p>
-                          <p className="font-medium">
-                            {user.city && user.state
-                              ? `${user.city}, ${user.state}`
-                              : "Not provided"}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-3">
-                        <Calendar className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <p className="text-sm text-gray-600">Joined</p>
-                          <p className="font-medium">
-                            {new Date(user.createdAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-3">
-                        <Activity className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <p className="text-sm text-gray-600">Last Login</p>
-                          <p className="font-medium">
-                            {user.lastLogin
-                              ? new Date(user.lastLogin).toLocaleDateString()
-                              : "Never"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Statistics */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-gray-600">
-                            Total Listings
-                          </p>
-                          <p className="text-2xl font-bold">
-                            {user.stats?.totalListings || 0}
-                          </p>
-                        </div>
-                        <Building2 className="h-8 w-8 text-blue-500" />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-gray-600">Total Views</p>
-                          <p className="text-2xl font-bold">
-                            {user.stats?.totalViews || 0}
-                          </p>
-                        </div>
-                        <Activity className="h-8 w-8 text-green-500" />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-gray-600">Conversations</p>
-                          <p className="text-2xl font-bold">
-                            {user.stats?.totalInquiries || 0}
-                          </p>
-                        </div>
-                        <MessageSquare className="h-8 w-8 text-purple-500" />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-gray-600">Total Spent</p>
-                          <p className="text-2xl font-bold">
-                            ₦{(user.totalSpent || 0).toLocaleString()}
-                          </p>
-                        </div>
-                        <CreditCard className="h-8 w-8 text-orange-500" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="listings">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>User Listings</CardTitle>
-                    <CardDescription>
-                      All listings created by this user
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <DataTable
-                      data={user.listings || []}
-                      columns={listingColumns}
-                      searchable
-                      searchPlaceholder="Search listings..."
-                    />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="transactions">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Transaction History</CardTitle>
-                    <CardDescription>
-                      All transactions made by this user
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <DataTable
-                      data={user.transactions || []}
-                      columns={transactionColumns}
-                      searchable
-                      searchPlaceholder="Search transactions..."
-                    />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* <TabsContent value="conversations">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Conversations</CardTitle>
-                  <CardDescription>
-                    All conversations involving this user
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {user.conversations?.map((conversation: Conversation) => (
-                      <div
-                        key={conversation.id}
-                        className="border rounded-lg p-4"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 className="font-medium">
-                              {conversation.listingTitle}
-                            </h4>
-                            <p className="text-sm text-gray-600">
-                              {conversation.participantCount} participants
-                            </p>
-                            <p className="text-sm text-gray-500 mt-1">
-                              {conversation.lastMessage}
-                            </p>
-                          </div>
-                          <span className="text-xs text-gray-500">
-                            {new Date(
-                              conversation.createdAt
-                            ).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                    )) || (
-                      <p className="text-center text-gray-500 py-8">
-                        No conversations found
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent> */}
-
-              <TabsContent value="activity">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Activity Log</CardTitle>
-                    <CardDescription>
-                      Recent user activities and system events
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {user.activityLogs?.map((log: any) => (
-                        <div
-                          key={log.id}
-                          className="flex items-start space-x-3 border-b pb-3"
-                        >
-                          <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-2" />
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{log.action}</p>
-                            <p className="text-sm text-gray-600">
-                              {log.description}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {new Date(log.createdAt).toLocaleString()}
-                            </p>
-                          </div>
-                        </div>
-                      )) || (
-                        <p className="text-center text-gray-500 py-8">
-                          No activity logs found
-                        </p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Button variant="outline" className="w-full justify-start">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Send Message
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Shield className="h-4 w-4 mr-2" />
-                  Reset Password
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Activity className="h-4 w-4 mr-2" />
-                  View Login History
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Verification Status */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Verification Status</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {user.verificationHistory?.map((verification: any) => (
-                  <div
-                    key={verification.id}
-                    className="flex items-center justify-between"
-                  >
-                    <span className="text-sm">
-                      {verification.type.replace("_", " ")}
-                    </span>
-                    <Badge
-                      className={
-                        verification.status === "APPROVED"
-                          ? "bg-green-100 text-green-800"
-                          : verification.status === "REJECTED"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-yellow-100 text-yellow-800"
-                      }
-                    >
-                      {verification.status}
-                    </Badge>
-                  </div>
-                )) || (
-                  <p className="text-sm text-gray-500">
-                    No verification records
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Important Dates */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Calendar className="h-5 w-5 mr-2" />
+                Important Dates
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Joined</p>
+                <p className="text-sm text-gray-900">
+                  {new Date(user.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">
+                  Last Updated
+                </p>
+                <p className="text-sm text-gray-900">
+                  {new Date(user.updatedAt).toLocaleDateString()}
+                </p>
+              </div>
+              {user.lastLogin && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500">
+                    Last Login
                   </p>
-                )}
-              </CardContent>
-            </Card>
+                  <p className="text-sm text-gray-900">
+                    {new Date(user.lastLogin).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-            {/* Financial Summary */}
-            {user.financialSummary && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Financial Summary</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Total Spent</span>
-                    <span className="font-medium">
-                      ₦{user.financialSummary.totalSpent.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Total Earned</span>
-                    <span className="font-medium">
-                      ₦{user.financialSummary.totalEarned.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">
-                      Pending Payments
-                    </span>
-                    <span className="font-medium">
-                      ₦{user.financialSummary.pendingPayments.toLocaleString()}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+          {/* Quick Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button variant="outline" className="w-full" disabled>
+                Send Message
+              </Button>
+              <Button variant="outline" className="w-full" disabled>
+                View Properties
+              </Button>
+              <Button variant="outline" className="w-full" disabled>
+                View Transactions
+              </Button>
+              <Button variant="outline" className="w-full" disabled>
+                Generate Report
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Notes */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Admin Notes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-500">No notes available</p>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

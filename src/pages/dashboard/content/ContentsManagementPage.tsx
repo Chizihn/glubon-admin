@@ -1,23 +1,244 @@
-// "use client";
+import { useState } from "react";
+import { Card, CardContent } from "../../../components/ui/card";
+import { Button } from "../../../components/ui/button";
+import { Badge } from "../../../components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "../../../components/ui/tabs";
+import { Input } from "../../../components/ui/input";
+import { Plus, FileText, HelpCircle, Trash2, Edit, MoreVertical, Search, Newspaper } from "lucide-react";
 
-// import { useState } from "react";
-// import {
-//   Card,
-//   CardContent,
-//   CardDescription,
-//   CardHeader,
-//   CardTitle,
-// } from "../../../components/ui/card";
-// import { Button } from "../../../components/ui/button";
-// import { Badge } from "../../../components/ui/badge";
-// import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../components/ui/tabs";
+// Types
+type ContentType = 'page' | 'post' | 'news' | 'faq' | 'custom';
+type ContentStatus = 'draft' | 'published' | 'archived' | 'scheduled' | 'trash';
 
-// import {
-//   Edit,
-//   FileText,
-//   HelpCircle,
-//   Mail,
-//   Plus,
+interface ContentItem {
+  id: string;
+  title: string;
+  slug: string;
+  type: ContentType;
+  status: ContentStatus;
+  author: string;
+  updatedAt: string;
+  views?: number;
+  featured?: boolean;
+  seoTitle?: string;
+  seoDescription?: string;
+}
+
+const ContentsManagementPage = () => {
+  const [activeTab, setActiveTab] = useState<ContentType>('page');
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Mock data - replace with actual data fetching
+  const [contents, setContents] = useState<ContentItem[]>([
+    {
+      id: '1',
+      title: 'Welcome to Glubon',
+      slug: 'welcome',
+      type: 'page',
+      status: 'published',
+      author: 'Admin User',
+      updatedAt: '2023-05-15T10:30:00Z',
+      views: 1245,
+      featured: true,
+      seoTitle: 'Welcome to Glubon - Your Real Estate Platform',
+      seoDescription: 'Discover the best properties with Glubon'
+    },
+    {
+      id: '2',
+      title: 'Getting Started Guide',
+      slug: 'getting-started',
+      type: 'post',
+      status: 'published',
+      author: 'Support Team',
+      updatedAt: '2023-05-10T14:20:00Z',
+      views: 876,
+      featured: false,
+      seoTitle: 'Getting Started with Glubon',
+      seoDescription: 'Learn how to use Glubon to find your dream property'
+    },
+    {
+      id: '3',
+      title: 'Latest Updates',
+      slug: 'latest-updates',
+      type: 'news',
+      status: 'published',
+      author: 'Editor',
+      updatedAt: '2023-05-05T09:15:00Z',
+      views: 1532,
+      featured: true,
+      seoTitle: 'Latest Updates - Glubon News',
+      seoDescription: 'Stay updated with the latest news from Glubon'
+    },
+    {
+      id: '4',
+      title: 'How to Use the Dashboard',
+      slug: 'dashboard-guide',
+      type: 'faq',
+      status: 'draft',
+      author: 'Support Team',
+      updatedAt: '2023-04-28T11:45:00Z',
+      views: 0,
+      featured: false,
+      seoTitle: 'Dashboard User Guide',
+      seoDescription: 'Learn how to navigate and use the Glubon dashboard'
+    }
+  ]);
+
+  const getStatusBadge = (status: ContentStatus) => {
+    const statusMap = {
+      draft: { label: 'Draft', variant: 'outline' as const },
+      published: { label: 'Published', variant: 'default' as const },
+      archived: { label: 'Archived', variant: 'secondary' as const },
+      scheduled: { label: 'Scheduled', variant: 'outline' as const },
+      trash: { label: 'Trash', variant: 'destructive' as const },
+    };
+    
+    const { label, variant } = statusMap[status] || { label: 'Unknown', variant: 'outline' as const };
+    return <Badge variant={variant} className="capitalize">{label}</Badge>;
+  };
+
+  const getTypeIcon = (type: ContentType) => {
+    switch (type) {
+      case 'page':
+        return <FileText className="h-4 w-4" />;
+      case 'post':
+        return <FileText className="h-4 w-4" />;
+      case 'news':
+        return <Newspaper className="h-4 w-4" />;
+      case 'faq':
+        return <HelpCircle className="h-4 w-4" />;
+      default:
+        return <FileText className="h-4 w-4" />;
+    }
+  };
+
+  const filteredContents = contents.filter(
+    content => content.type === activeTab && 
+    content.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleDelete = (id: string) => {
+    // In a real app, you would make an API call here
+    setContents(contents.filter(content => content.id !== id));
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold">Content Management</h1>
+          <p className="text-gray-500">Create and manage all your website content</p>
+        </div>
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          Create New
+        </Button>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ContentType)}>
+        <div className="flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="page">
+              <FileText className="h-4 w-4 mr-2" />
+              Pages
+            </TabsTrigger>
+            <TabsTrigger value="post">
+              <FileText className="h-4 w-4 mr-2" />
+              Posts
+            </TabsTrigger>
+            <TabsTrigger value="news">
+              <Newspaper className="h-4 w-4 mr-2" />
+              News
+            </TabsTrigger>
+            <TabsTrigger value="faq">
+              <HelpCircle className="h-4 w-4 mr-2" />
+              FAQs
+            </TabsTrigger>
+          </TabsList>
+          
+          <div className="relative w-64">
+            <Input
+              placeholder="Search content..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8"
+            />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+          </div>
+        </div>
+
+        <div className="mt-6 space-y-4">
+          {filteredContents.map((content) => (
+            <Card key={content.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start space-x-4">
+                    <div className="mt-1">
+                      {getTypeIcon(content.type)}
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <h3 className="font-medium">{content.title}</h3>
+                        {content.featured && (
+                          <Badge variant="outline" className="text-xs">
+                            Featured
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500 mt-1">
+                        /{content.slug} • {content.author} • {new Date(content.updatedAt).toLocaleDateString()}
+                      </p>
+                      {content.seoTitle && (
+                        <p className="text-xs text-gray-500 mt-1 line-clamp-1">
+                          SEO: {content.seoTitle}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {getStatusBadge(content.status)}
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                      onClick={() => handleDelete(content.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          
+          {filteredContents.length === 0 && (
+            <div className="text-center py-12 border-2 border-dashed rounded-lg">
+              <FileText className="h-12 w-12 mx-auto text-gray-300" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                No {activeTab} content found
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {searchQuery ? 'Try a different search term' : `Get started by creating a new ${activeTab}`}
+              </p>
+              <Button className="mt-4">
+                <Plus className="h-4 w-4 mr-2" />
+                Create {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+              </Button>
+            </div>
+          )}
+        </div>
+      </Tabs>
+    </div>
+  );
+};
+
+export default ContentsManagementPage;
 //   Eye,
 //   Trash2,
 // } from "lucide-react";

@@ -1,62 +1,127 @@
-// "use client";
+import { useState } from "react";
+import { useParams } from "react-router-dom";
+import { Button } from "../../../components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "../../../components/ui/card";
+import { Badge } from "../../../components/ui/badge";
+import { ArrowLeft } from "lucide-react";
 
-// import { useState } from "react";
-// import { useQuery, useMutation } from "@apollo/client";
-// import { useParams, useRouter } from "next/navigation";
-// import {
-//   Card,
-//   CardContent,
-//   CardDescription,
-//   CardHeader,
-//   CardTitle,
-// } from "../../../components/ui/card";
-// import { Button } from "../../../components/ui/button";
-// import { Badge } from "../../../components/ui/badge";
-// import {
-//   Tabs,
-//   TabsContent,
-//   TabsList,
-//   TabsTrigger,
-// } from "../../../components/ui/tabs";
-// import { Textarea } from "../../../components/ui/textarea";
-// import { Label } from "../../../components/ui/label";
-// import {
-//   Avatar,
-//   AvatarFallback,
-//   AvatarImage,
-// } from "../../../components/ui/avatar";
-// import {
-//   Shield,
-//   User,
-//   FileText,
-//   Calendar,
-//   CheckCircle,
-//   XCircle,
-//   AlertTriangle,
-//   ArrowLeft,
-//   Download,
-//   Eye,
-// } from "lucide-react";
+type VerificationStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'UNDER_REVIEW';
+type DocumentType = 'ID_CARD' | 'PASSPORT' | 'DRIVERS_LICENSE' | 'UTILITY_BILL' | 'OTHER';
 
-// export default function VerificationDetailsPage() {
-//   const params = useParams();
-//   const router = useRouter();
-//   const verificationId = params.id as string;
+const VerificationDetailPage = () => {
+  const { id: verificationId } = useParams<{ id: string }>();
+  const [loading] = useState(false);
+  const [verification] = useState<{
+    id: string;
+    status: VerificationStatus;
+    documentType: DocumentType;
+    firstName: string;
+    lastName: string;
+    email: string;
+    createdAt: string;
+  } | null>({
+    id: verificationId || '',
+    status: 'PENDING',
+    documentType: 'ID_CARD',
+    firstName: 'John',
+    lastName: 'Doe',
+    email: 'john.doe@example.com',
+    createdAt: new Date().toISOString(),
+  });
 
-//   const [reviewReason, setReviewReason] = useState("");
-//   const [selectedAction, setSelectedAction] = useState<
-//     "approve" | "reject" | null
-//   >(null);
+  const getStatusBadge = (status: VerificationStatus) => {
+    const statusMap = {
+      PENDING: 'bg-yellow-100 text-yellow-800',
+      APPROVED: 'bg-green-100 text-green-800',
+      REJECTED: 'bg-red-100 text-red-800',
+      UNDER_REVIEW: 'bg-blue-100 text-blue-800',
+    };
+    return statusMap[status] || 'bg-gray-100 text-gray-800';
+  };
 
-//   const { data, loading, refetch } = useQuery(GET_VERIFICATION_DETAILs, {
-//     variables: { verificationId },
-//   });
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+          <div className="h-64 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
 
-//   const [reviewVerification] = useMutation(REVIEW_VERIFICATION);
+  if (!verification) {
+    return (
+      <div className="p-6">
+        <div className="text-center py-12">
+          <h2 className="text-xl font-semibold text-gray-700">Verification not found</h2>
+          <p className="text-gray-500 mt-2">The requested verification could not be found.</p>
+          <Button className="mt-4" onClick={() => window.history.back()}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Verifications
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
-//   const verification = data?.getVerificationDetails;
+  return (
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Verification Details</h1>
+          <p className="text-gray-500">View and manage verification request</p>
+        </div>
+        <div className="flex space-x-2">
+          <Button variant="outline" onClick={() => window.history.back()}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+        </div>
+      </div>
 
-//   const handleReview = async (approved: boolean) => {
+      <Card>
+        <CardHeader className="border-b">
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-lg">
+              {verification.firstName} {verification.lastName}
+            </CardTitle>
+            <Badge className={`${getStatusBadge(verification.status)}`}>
+              {verification.status.replace('_', ' ')}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="font-medium mb-2">Document Information</h3>
+              <div className="space-y-2 text-sm">
+                <p><span className="text-gray-500">Document Type:</span> {verification.documentType.replace('_', ' ')}</p>
+                <p><span className="text-gray-500">Submitted:</span> {new Date(verification.createdAt).toLocaleDateString()}</p>
+              </div>
+            </div>
+            <div>
+              <h3 className="font-medium mb-2">Contact Information</h3>
+              <div className="space-y-2 text-sm">
+                <p><span className="text-gray-500">Email:</span> {verification.email}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-8">
+            <div className="flex space-x-4">
+              <Button variant="outline">View Document</Button>
+              <Button variant="outline">View Selfie</Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default VerificationDetailPage;
 //     try {
 //       await reviewVerification({
 //         variables: {

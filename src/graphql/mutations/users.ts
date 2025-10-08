@@ -1,1 +1,2 @@
-import { gql } from "@apollo/client";
+// User mutations will be added here
+export const PLACEHOLDER = true;

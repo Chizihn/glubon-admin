@@ -10,7 +10,6 @@ export const GET_USER_BOOKINGS = gql`
       endDate
       amount
       status
-      escrowTransactionId
       createdAt
       updatedAt
 

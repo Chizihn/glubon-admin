@@ -77,20 +77,14 @@ export const GET_LISTING_BY_ID = gql`
         firstName
         lastName
         email
-        provider
-        isActive
         phoneNumber
         profilePic
         isVerified
-        role
         status
         address
         city
         state
         country
-        createdAt
-        updatedAt
-        lastLogin
       }
       viewsCount
       likesCount
@@ -98,7 +92,6 @@ export const GET_LISTING_BY_ID = gql`
       isViewed
       createdAt
       updatedAt
-      distance
       location
       priceUnit
       pricePer

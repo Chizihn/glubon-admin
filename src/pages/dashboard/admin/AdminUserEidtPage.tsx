@@ -1,6 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-"use client";
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@apollo/client";
 import { useParams, useNavigate, Link } from "react-router-dom";

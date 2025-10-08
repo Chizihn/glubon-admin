@@ -12,7 +12,6 @@ export interface Booking {
   status: BookingStatus;
   // transactions: Transaction[];
   // disputes: Dispute[];
-  escrowTransactionId?: string | null;
   createdAt: Date;
   updatedAt: Date;
   renter: User;

@@ -1,8 +1,26 @@
 import { gql } from "@apollo/client";
 
-export const GET_PENDING_VERIFICATIONS = gql`
-  query GetPendingVerifications($page: Int, $limit: Int) {
-    getPendingVerifications(page: $page, limit: $limit) {
+export const GET_VERIFICATIONS = gql`
+  query GetVerifications(
+    $limit: Int!
+    $page: Int!
+    $status: VerificationStatus
+    $search: String
+  ) {
+    getVerifications(
+      limit: $limit
+      page: $page
+      status: $status
+      search: $search
+    ) {
+      pagination {
+        page
+        limit
+        totalPages
+        totalItems
+        hasNextPage
+        hasPreviousPage
+      }
       items {
         id
         documentType
@@ -21,12 +39,6 @@ export const GET_PENDING_VERIFICATIONS = gql`
           phoneNumber
           role
         }
-      }
-      pagination {
-        totalItems
-        totalPages
-        currentPage
-        hasNextPage
       }
     }
   }
@@ -52,6 +64,28 @@ export const GET_VERIFICATION_BY_ID = gql`
         phoneNumber
         role
       }
+    }
+  }
+`;
+
+export const APPROVE_VERIFICATION = gql`
+  mutation ApproveVerification($verificationId: ID!, $notes: String) {
+    approveVerification(verificationId: $verificationId, notes: $notes) {
+      id
+      status
+      reviewedAt
+      notes
+    }
+  }
+`;
+
+export const REJECT_VERIFICATION = gql`
+  mutation RejectVerification($verificationId: ID!, $reason: String!) {
+    rejectVerification(verificationId: $verificationId, reason: $reason) {
+      id
+      status
+      reviewedAt
+      rejectionReason
     }
   }
 `;

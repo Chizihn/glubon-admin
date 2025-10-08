@@ -1,8 +1,7 @@
-import { useState } from 'react';
 import { Check, X, Eye, Loader2 } from 'lucide-react';
-import { Verification } from '@/types/verification';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import type { Verification } from '@/types/verification';
 
 interface VerificationTableProps {
   verifications: Verification[];

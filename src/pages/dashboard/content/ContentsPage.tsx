@@ -1,63 +1,70 @@
-// "use client";
+import { useState } from "react";
+import { Card, CardContent } from "../../../components/ui/card";
+import { Button } from "../../../components/ui/button";
+import { Badge } from "../../../components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "../../../components/ui/tabs";
+import { Plus, FileText, Newspaper, HelpCircle, File } from "lucide-react";
 
-// import { useState } from "react";
-// import {
-//   Card,
-//   CardContent,
-//   CardDescription,
-//   CardHeader,
-//   CardTitle,
-// } from "../../../components/ui/card";
-// import { Button } from "../../../components/ui/button";
-// import { Badge } from "../../../components/ui/badge";
-// import {
-//   Tabs,
-//   TabsContent,
-//   TabsList,
-//   TabsTrigger,
-// } from "../../../components/ui/tabs";
+type ContentType = 'page' | 'post' | 'news' | 'faq' | 'custom';
+type ContentStatus = 'draft' | 'published' | 'archived' | 'scheduled' | 'trash';
 
-// import {
-//   Edit,
-//   FileText,
-//   HelpCircle,
-//   Mail,
-//   Plus,
-//   Eye,
-//   Trash2,
-// } from "lucide-react";
-// import { Link } from "react-router-dom";
+interface ContentItem {
+  id: string;
+  title: string;
+  slug: string;
+  type: ContentType;
+  status: ContentStatus;
+  author: string;
+  updatedAt: string;
+  views?: number;
+}
 
-// export default function ContentManagementPage() {
-//   // const [currentPage, setCurrentPage] = useState(1);
-
-//   // Mock data for static pages
-//   const staticPages = [
-//     {
-//       id: "1",
-//       title: "Privacy Policy",
-//       slug: "privacy-policy",
-//       status: "PUBLISHED",
-//       lastModified: "2024-01-15T10:30:00Z",
-//       modifiedBy: "John Admin",
-//     },
-//     {
-//       id: "2",
-//       title: "Terms of Service",
-//       slug: "terms-of-service",
-//       status: "PUBLISHED",
-//       lastModified: "2024-01-14T15:20:00Z",
-//       modifiedBy: "Jane Admin",
-//     },
-//     {
-//       id: "3",
-//       title: "About Us",
-//       slug: "about-us",
-//       status: "DRAFT",
-//       lastModified: "2024-01-13T09:45:00Z",
-//       modifiedBy: "Mike Content",
-//     },
-//   ];
+const ContentsPage = () => {
+  const [activeTab, setActiveTab] = useState<ContentType>('page');
+  
+  // Mock data - replace with actual data fetching
+  const [contents] = useState<ContentItem[]>([
+    {
+      id: '1',
+      title: 'Welcome to Glubon',
+      slug: 'welcome',
+      type: 'page',
+      status: 'published',
+      author: 'Admin User',
+      updatedAt: '2023-05-15T10:30:00Z',
+      views: 1245
+    },
+    {
+      id: '2',
+      title: 'Getting Started Guide',
+      slug: 'getting-started',
+      type: 'post',
+      status: 'published',
+      author: 'Support Team',
+      updatedAt: '2023-05-10T14:20:00Z',
+      views: 876
+    },
+    {
+      id: '3',
+      title: 'Latest Updates',
+      slug: 'latest-updates',
+      type: 'news',
+      status: 'published',
+      author: 'Editor',
+      updatedAt: '2023-05-05T09:15:00Z',
+      views: 1532
+    },
+    {
+      id: '4',
+      title: 'How to Use the Dashboard',
+      slug: 'dashboard-guide',
+      type: 'faq',
+      status: 'draft',
+      author: 'Support Team',
+      updatedAt: '2023-04-28T11:45:00Z',
+      views: 0
+    }
+  ]);
 
 //   // Mock data for FAQs
 //   const faqs = [
@@ -115,19 +122,128 @@
 //     },
 //   ];
 
-//   const getStatusColor = (status: string) => {
-//     switch (status) {
-//       case "PUBLISHED":
-//       case "ACTIVE":
-//         return "bg-green-100 text-green-800";
-//       case "DRAFT":
-//         return "bg-yellow-100 text-yellow-800";
-//       case "INACTIVE":
-//         return "bg-gray-100 text-gray-800";
-//       default:
-//         return "bg-gray-100 text-gray-800";
-//     }
-//   };
+  const getStatusBadge = (status: ContentStatus) => {
+    const statusMap = {
+      draft: { label: 'Draft', variant: 'outline' as const },
+      published: { label: 'Published', variant: 'default' as const },
+      archived: { label: 'Archived', variant: 'secondary' as const },
+      scheduled: { label: 'Scheduled', variant: 'outline' as const },
+      trash: { label: 'Trash', variant: 'destructive' as const },
+    };
+    
+    const { label, variant } = statusMap[status] || { label: 'Unknown', variant: 'outline' as const };
+    return <Badge variant={variant} className="capitalize">{label}</Badge>;
+  };
+
+  const getTypeIcon = (type: ContentType) => {
+    switch (type) {
+      case 'page':
+        return <FileText className="h-4 w-4 mr-2" />;
+      case 'post':
+        return <FileText className="h-4 w-4 mr-2" />;
+      case 'news':
+        return <Newspaper className="h-4 w-4 mr-2" />;
+      case 'faq':
+        return <HelpCircle className="h-4 w-4 mr-2" />;
+      default:
+        return <File className="h-4 w-4 mr-2" />;
+    }
+  };
+
+  const filteredContents = contents.filter(content => content.type === activeTab);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold">Content Management</h1>
+          <p className="text-gray-500">Create and manage your website content</p>
+        </div>
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          Create New
+        </Button>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ContentType)}>
+        <TabsList>
+          <TabsTrigger value="page">
+            <FileText className="h-4 w-4 mr-2" />
+            Pages
+          </TabsTrigger>
+          <TabsTrigger value="post">
+            <FileText className="h-4 w-4 mr-2" />
+            Posts
+          </TabsTrigger>
+          <TabsTrigger value="news">
+            <Newspaper className="h-4 w-4 mr-2" />
+            News
+          </TabsTrigger>
+          <TabsTrigger value="faq">
+            <HelpCircle className="h-4 w-4 mr-2" />
+            FAQs
+          </TabsTrigger>
+          <TabsTrigger value="custom">
+            <File className="h-4 w-4 mr-2" />
+            Custom
+          </TabsTrigger>
+        </TabsList>
+
+        <div className="mt-6 space-y-4">
+          {filteredContents.map((content) => (
+            <Card key={content.id} className="hover:bg-gray-50 transition-colors">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    {getTypeIcon(content.type)}
+                    <div>
+                      <h3 className="font-medium">{content.title}</h3>
+                      <div className="flex items-center space-x-2 text-sm text-gray-500">
+                        <span>/{content.slug}</span>
+                        <span>•</span>
+                        <span>By {content.author}</span>
+                        <span>•</span>
+                        <span>{new Date(content.updatedAt).toLocaleDateString()}</span>
+                        {content.views !== undefined && (
+                          <>
+                            <span>•</span>
+                            <span>{content.views.toLocaleString()} views</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    {getStatusBadge(content.status)}
+                    <Button variant="ghost" size="sm">
+                      Edit
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          
+          {filteredContents.length === 0 && (
+            <div className="text-center py-12 border-2 border-dashed rounded-lg">
+              <FileText className="h-12 w-12 mx-auto text-gray-300" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No {activeTab} content found</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Get started by creating a new {activeTab}.
+              </p>
+              <Button className="mt-4">
+                <Plus className="h-4 w-4 mr-2" />
+                Create {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+              </Button>
+            </div>
+          )}
+        </div>
+      </Tabs>
+    </div>
+  );
+};
+
+export default ContentsPage;
 
 //   const staticPagesColumns = [
 //     {

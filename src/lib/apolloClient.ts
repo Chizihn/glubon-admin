@@ -112,6 +112,9 @@ const errorLink = onError(
     if (networkError) {
       console.error("Network error:", networkError);
     }
+
+    // Return undefined for non-auth errors to let them bubble up
+    return;
   }
 );
 

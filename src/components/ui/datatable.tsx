@@ -12,13 +12,13 @@ import {
 } from "./table";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 
-interface Column<T> {
+export interface Column<T> {
   key: keyof T | string;
   label: string;
   render?: (value: any, item: T) => React.ReactNode;
 }
 
-interface DataTableProps<T> {
+export interface DataTableProps<T> {
   data: T[];
   columns: Column<T>[];
   searchable?: boolean;
@@ -29,6 +29,7 @@ interface DataTableProps<T> {
     onPageChange: (page: number) => void;
   };
   loading?: boolean;
+  result?: string;
 }
 
 export function DataTable<T extends Record<string, any>>({
@@ -38,6 +39,7 @@ export function DataTable<T extends Record<string, any>>({
   searchPlaceholder = "Search...",
   pagination,
   loading = false,
+  result = "No data available",
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -114,7 +116,7 @@ export function DataTable<T extends Record<string, any>>({
                   colSpan={columns.length}
                   className="text-center py-8 text-gray-500"
                 >
-                  No data available
+                  {result}
                 </TableCell>
               </TableRow>
             ) : (

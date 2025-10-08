@@ -8,7 +8,6 @@ export const GET_ALL_USERS = gql`
         firstName
         lastName
         email
-        provider
         isActive
         phoneNumber
         profilePic
@@ -59,14 +58,13 @@ export const GET_USER_BY_ID = gql`
       profilePic
       isVerified
       role
-      status
       address
       city
       state
       country
       createdAt
       updatedAt
-      lastLogin
+      status
     }
   }
 `;
