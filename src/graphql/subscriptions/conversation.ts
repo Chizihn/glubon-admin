@@ -1,7 +1,7 @@
-import { gql } from '@apollo/client';
+import { gql } from "@apollo/client";
 
 export const MESSAGE_SENT = gql`
-  subscription MessageSent($conversationId: ID) {
+  subscription MessageSent($conversationId: ID!) {
     messageSent(conversationId: $conversationId) {
       id
       content
@@ -18,7 +18,13 @@ export const MESSAGE_SENT = gql`
       isRead
       isBroadcast
       broadcastId
-      attachments
+      attachments {
+        id
+        filename
+        url
+        size
+        mimeType
+      }
       createdAt
       updatedAt
     }
@@ -42,8 +48,43 @@ export const BROADCAST_MESSAGE_SENT = gql`
       recipientRoles
       sentToUserIds
       totalRecipients
-      attachments
+      attachments {
+        id
+        filename
+        url
+        size
+        mimeType
+      }
       createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const CONVERSATION_UPDATED = gql`
+  subscription ConversationUpdated($userId: ID!) {
+    conversationUpdated(userId: $userId) {
+      id
+      participants {
+        id
+        firstName
+        lastName
+        email
+        profilePic
+        role
+      }
+      lastMessage {
+        id
+        content
+        messageType
+        sender {
+          id
+          firstName
+          lastName
+        }
+        createdAt
+      }
+      unreadCount
       updatedAt
     }
   }

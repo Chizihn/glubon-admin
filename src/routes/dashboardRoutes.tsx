@@ -60,6 +60,10 @@ import AdminActivityLogsPage from "../pages/dashboard/admin/AdminActivityLogsPag
 import CreateAdPage from "@/pages/dashboard/advertising/CreateAdPage";
 import AdDetailsPage from "@/pages/dashboard/advertising/AdDetailsPage";
 
+// Tickets
+import TicketsPage from "../pages/dashboard/tickets/TicketsPage";
+import TicketDetailsPage from "../pages/dashboard/tickets/TicketDetailsPage";
+
 // Create a type-safe route object
 const createRoute = (path: string, element: React.ReactNode): RouteObject => ({
   path,
@@ -147,6 +151,10 @@ export const dashboardRoutes: RouteObject[] = [
       createRoute(ROUTES.ADMIN_CREATE, <AdminCreatePage />),
       createRoute(ROUTES.ADMIN_DETAILS(":id"), <AdminDetailsPage />),
       createRoute(ROUTES.ADMIN_EDIT(":id"), <AdminUserEditPage />),
+
+      // Tickets
+      createRoute(ROUTES.TICKETS, <TicketsPage />),
+      createRoute(ROUTES.TICKET_DETAILS(":id"), <TicketDetailsPage />),
 
       // System
       createRoute(ROUTES.SYSTEM_LOGS, <SystemLogsPage />),

@@ -69,7 +69,7 @@ export default function AnalyticsPage({
   const [activeTab, setActiveTab] = useState<
     "overview" | "users" | "listings" | "transactions"
   >(defaultTab);
-  const [dateRange, setDateRange] = useState({
+  const [dateRange] = useState({
     period: "month",
   });
 
@@ -84,6 +84,7 @@ export default function AnalyticsPage({
       dateRange,
     },
     errorPolicy: "all",
+    fetchPolicy: "cache-and-network",
     onError: (error) => {
       console.error("Analytics query error:", error);
     },
@@ -95,23 +96,206 @@ export default function AnalyticsPage({
     switch (activeTab) {
       case "users":
         return (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold">User Analytics</h2>
-            <p>User analytics content will be displayed here.</p>
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <StatsCard
+                title="Total Users"
+                value={analytics?.overview?.users?.total || 0}
+                icon={Users}
+                trend={{
+                  value: analytics?.overview?.growth?.users?.percentChange || 0,
+                  isPositive:
+                    (analytics?.overview?.growth?.users?.percentChange || 0) >
+                    0,
+                }}
+              />
+              <StatsCard
+                title="Active Users"
+                value={analytics?.overview?.users?.active || 0}
+                icon={Users}
+              />
+              <StatsCard
+                title="Verified Users"
+                value={analytics?.overview?.users?.verified || 0}
+                icon={Shield}
+              />
+              <StatsCard
+                title="New This Month"
+                value={analytics?.overview?.users?.newThisMonth || 0}
+                icon={Users}
+              />
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>User Growth Over Time</CardTitle>
+                <CardDescription>User registration trends</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={analytics?.charts?.userGrowth || []}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line
+                      type="monotone"
+                      dataKey="renters"
+                      stroke="#3b82f6"
+                      name="Renters"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="listers"
+                      stroke="#10b981"
+                      name="Listers"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="total"
+                      stroke="#8b5cf6"
+                      name="Total"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
           </div>
         );
       case "listings":
         return (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Listings Analytics</h2>
-            <p>Listings analytics content will be displayed here.</p>
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <StatsCard
+                title="Total Properties"
+                value={analytics?.overview?.properties?.total || 0}
+                icon={Building2}
+                trend={{
+                  value:
+                    analytics?.overview?.growth?.properties?.percentChange || 0,
+                  isPositive:
+                    (analytics?.overview?.growth?.properties?.percentChange ||
+                      0) > 0,
+                }}
+              />
+              <StatsCard
+                title="Active Properties"
+                value={analytics?.overview?.properties?.active || 0}
+                icon={Building2}
+              />
+              <StatsCard
+                title="Featured Properties"
+                value={analytics?.overview?.properties?.featured || 0}
+                icon={Building2}
+              />
+              <StatsCard
+                title="New This Month"
+                value={analytics?.overview?.properties?.newThisMonth || 0}
+                icon={Building2}
+              />
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Property Growth Over Time</CardTitle>
+                <CardDescription>Property listing trends</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analytics?.charts?.propertyGrowth || []}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="active" fill="#10b981" name="Active" />
+                    <Bar dataKey="pending" fill="#f59e0b" name="Pending" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
           </div>
         );
       case "transactions":
         return (
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Transactions Analytics</h2>
-            <p>Transactions analytics content will be displayed here.</p>
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <StatsCard
+                title="Total Revenue"
+                value={analytics?.overview?.totalRevenue || 0}
+                icon={MessageSquare}
+              />
+              <StatsCard
+                title="Recent Transactions"
+                value={analytics?.recentTransactions?.length || 0}
+                icon={MessageSquare}
+              />
+              <StatsCard
+                title="Property Views Today"
+                value={analytics?.overview?.activity?.propertyViewsToday || 0}
+                icon={Building2}
+              />
+              <StatsCard
+                title="Messages Today"
+                value={analytics?.overview?.activity?.messagesToday || 0}
+                icon={MessageSquare}
+              />
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Transactions</CardTitle>
+                <CardDescription>Latest platform transactions</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {analytics?.recentTransactions
+                    ?.slice(0, 5)
+                    .map(
+                      (transaction: {
+                        id: string;
+                        userName?: string;
+                        description: string;
+                        currency: string;
+                        amount: number;
+                        status: string;
+                      }) => (
+                        <div
+                          key={transaction.id}
+                          className="flex items-center justify-between p-4 border rounded-lg"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                              <span className="text-blue-600 font-semibold">
+                                {transaction.userName?.[0] || "U"}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-medium">
+                                {transaction.description}
+                              </p>
+                              <p className="text-sm text-gray-500">
+                                {transaction.userName}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold">
+                              {transaction.currency} {transaction.amount}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {transaction.status}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    ) || (
+                    <p className="text-center text-gray-500 py-8">
+                      No recent transactions
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         );
       case "overview":
@@ -123,11 +307,24 @@ export default function AnalyticsPage({
                 title="Total Users"
                 value={analytics?.overview?.users?.total || 0}
                 icon={Users}
+                trend={{
+                  value: analytics?.overview?.growth?.users?.percentChange || 0,
+                  isPositive:
+                    (analytics?.overview?.growth?.users?.percentChange || 0) >
+                    0,
+                }}
               />
               <StatsCard
                 title="Total Properties"
                 value={analytics?.overview?.properties?.total || 0}
                 icon={Building2}
+                trend={{
+                  value:
+                    analytics?.overview?.growth?.properties?.percentChange || 0,
+                  isPositive:
+                    (analytics?.overview?.growth?.properties?.percentChange ||
+                      0) > 0,
+                }}
               />
               <StatsCard
                 title="Active Conversations"
@@ -142,6 +339,76 @@ export default function AnalyticsPage({
                 }
                 icon={Shield}
               />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Platform Activity</CardTitle>
+                  <CardDescription>Daily activity metrics</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={analytics?.charts?.activity || []}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line
+                        type="monotone"
+                        dataKey="views"
+                        stroke="#3b82f6"
+                        name="Views"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="messages"
+                        stroke="#10b981"
+                        name="Messages"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Geographic Distribution</CardTitle>
+                  <CardDescription>
+                    Users and properties by location
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {analytics?.charts?.geographic
+                      ?.slice(0, 5)
+                      .map(
+                        (location: {
+                          state: string;
+                          users: number;
+                          properties: number;
+                        }) => (
+                          <div
+                            key={location.state}
+                            className="flex items-center justify-between"
+                          >
+                            <span className="font-medium">
+                              {location.state}
+                            </span>
+                            <div className="flex space-x-4 text-sm text-gray-500">
+                              <span>{location.users} users</span>
+                              <span>{location.properties} properties</span>
+                            </div>
+                          </div>
+                        )
+                      ) || (
+                      <p className="text-center text-gray-500 py-8">
+                        No geographic data available
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         );
@@ -228,220 +495,6 @@ export default function AnalyticsPage({
       </div>
 
       <div className="space-y-6">{renderTabContent()}</div>
-
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-          <p className="text-gray-600">Platform insights and metrics</p>
-        </div>
-
-        <div className="flex space-x-2">
-          <Button
-            variant={dateRange.period === "week" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setDateRange({ period: "week" })}
-          >
-            Week
-          </Button>
-          <Button
-            variant={dateRange.period === "month" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setDateRange({ period: "month" })}
-          >
-            Month
-          </Button>
-          <Button
-            variant={dateRange.period === "year" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setDateRange({ period: "year" })}
-          >
-            Year
-          </Button>
-        </div>
-      </div>
-
-      {/* Overview Stats */}
-      {analytics?.overview && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatsCard
-            title="Total Users"
-            value={analytics.overview.users.total}
-            icon={Users}
-            trend={{
-              value: Math.round(
-                (analytics.overview.users.newThisMonth /
-                  analytics.overview.users.total) *
-                  100
-              ),
-              isPositive: true,
-            }}
-          />
-          <StatsCard
-            title="Total Properties"
-            value={analytics.overview.properties.total}
-            icon={Building2}
-            trend={{
-              value: Math.round(
-                (analytics.overview.properties.newThisMonth /
-                  analytics.overview.properties.total) *
-                  100
-              ),
-              isPositive: true,
-            }}
-          />
-          <StatsCard
-            title="Total Conversations"
-            value={analytics.overview.activity.totalConversations}
-            icon={MessageSquare}
-          />
-          <StatsCard
-            title="Pending Verifications"
-            value={
-              (analytics.overview.verifications.pendingIdentity || 0) +
-              (analytics.overview.verifications.pendingOwnership || 0)
-            }
-            icon={Shield}
-          />
-        </div>
-      )}
-
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* User Growth Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>User Growth</CardTitle>
-            <CardDescription>New user registrations over time</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={analytics?.charts?.userGrowth || []}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="total"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Property Growth Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Property Growth</CardTitle>
-            <CardDescription>New property listings over time</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={analytics?.charts?.propertyGrowth || []}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="total" fill="#10b981" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Property Status Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Property Status</CardTitle>
-            <CardDescription>Distribution of property statuses</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">
-                  {analytics?.performance?.propertyStatus?.active || 0}
-                </p>
-                <p className="text-sm text-gray-600">Active</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-yellow-600">
-                  {analytics?.performance?.propertyStatus?.pending || 0}
-                </p>
-                <p className="text-sm text-gray-600">Pending</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-blue-600">
-                  {analytics?.performance?.propertyStatus?.inactive || 0}
-                </p>
-                <p className="text-sm text-gray-600">Inactive</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-purple-600">
-                  {analytics?.overview?.properties?.total || 0}
-                </p>
-                <p className="text-sm text-gray-600">Total</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Verification Status */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Verification Status</CardTitle>
-            <CardDescription>Identity verification statistics</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-yellow-600">
-                  {analytics?.performance?.verificationStatus?.pending || 0}
-                </p>
-                <p className="text-sm text-gray-600">Pending</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">
-                  {analytics?.performance?.verificationStatus?.verified || 0}
-                </p>
-                <p className="text-sm text-gray-600">Verified</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Additional Metrics */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Platform Activity</CardTitle>
-          <CardDescription>
-            Communication and engagement metrics
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-blue-600">
-                {analytics?.overview?.conversations?.total || 0}
-              </p>
-              <p className="text-sm text-gray-600">Total Conversations</p>
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-green-600">
-                {analytics?.performance?.activityMetrics?.totalMessages || 0}
-              </p>
-              <p className="text-sm text-gray-600">Total Messages</p>
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-purple-600">
-                {analytics?.overview?.users?.new || 0}
-              </p>
-              <p className="text-sm text-gray-600">New Users This Period</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

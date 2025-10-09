@@ -52,6 +52,10 @@ export const ROUTES = {
   // Support
   SUPPORT: "/dashboard/support",
 
+  // Tickets
+  TICKETS: "/dashboard/tickets",
+  TICKET_DETAILS: (id: string) => `/dashboard/tickets/${id}`,
+
   // Admin
   ADMINS: "/dashboard/admins",
   ADMIN_CREATE: "/dashboard/admins/create",

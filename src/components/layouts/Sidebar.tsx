@@ -17,6 +17,7 @@ import {
   ChevronDown,
   FileSearch,
   Activity,
+  Headphones,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
@@ -128,6 +129,11 @@ const navigation: (NavLinkItem | NavDropdownItem)[] = [
     name: "Communications",
     href: "/dashboard/communications",
     icon: MessageSquare,
+  },
+  {
+    name: "Tickets",
+    href: "/dashboard/tickets",
+    icon: Headphones,
   },
   {
     name: "Reports",
