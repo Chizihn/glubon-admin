@@ -126,7 +126,7 @@ const navigation: (NavLinkItem | NavDropdownItem)[] = [
     ],
   },
   {
-    name: "Communications",
+    name: "Chat",
     href: "/dashboard/communications",
     icon: MessageSquare,
   },

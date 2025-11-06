@@ -9,8 +9,16 @@ import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import { useAuthStore } from "../store/authStore";
 
+export const API_BASE_URL = "https://glubon-api.onrender.com";
+export const GRAPHQL_ENDPOINT = `${API_BASE_URL}/graphql`;
+
+export const WEBSOCKET_ENDPOINT = `${API_BASE_URL.replace(
+  "https",
+  "wss"
+).replace("http", "ws")}/graphql`;
+
 const httpLink = createHttpLink({
-  uri: "http://localhost:4000/graphql",
+  uri: GRAPHQL_ENDPOINT,
 });
 
 // Set Authorization Header using Zustand store
@@ -49,7 +57,7 @@ const errorLink = onError(
         isRefreshing = true;
 
         return fromPromise(
-          fetch("http://localhost:4000/graphql", {
+          fetch(GRAPHQL_ENDPOINT, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

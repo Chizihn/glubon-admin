@@ -1,10 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useSubscription } from "@apollo/client";
-import {
-  GET_CONVERSATION,
-  SEND_MESSAGE,
-  MESSAGE_SENT_SUBSCRIPTION,
-} from "../../../graphql/communications";
 import { toast } from "sonner";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
@@ -16,59 +11,255 @@ import {
 import { Send, ArrowLeft } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useUserPresence } from "../../../hooks/useUserPresence";
-import { TYPING_STATUS_SUBSCRIPTION } from "../../../graphql/subscriptions/presence";
-import {
-  SEND_TYPING_STATUS,
-  SEND_HEARTBEAT,
-} from "../../../graphql/mutations/presence";
 import { Badge } from "../../../components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
+import { gql } from "@apollo/client";
 
-// Define types for the conversation data
+// GraphQL Queries, Mutations, and Subscriptions
+const GET_CONVERSATION = gql`
+  query GetConversation($conversationId: String!) {
+    getConversation(conversationId: $conversationId) {
+      id
+      participants {
+        id
+        firstName
+        lastName
+        email
+        isVerified
+        profilePic
+      }
+      unreadCount
+    }
+  }
+`;
+
+const GET_MESSAGES = gql`
+  query GetMessages(
+    $conversationId: ID!
+    $filters: MessageFilters!
+    $page: Int
+    $limit: Int
+  ) {
+    getMessages(
+      conversationId: $conversationId
+      filters: $filters
+      page: $page
+      limit: $limit
+    ) {
+      items {
+        id
+        conversationId
+        senderId
+        content
+        messageType
+        attachments
+        isRead
+        createdAt
+        sender {
+          id
+          firstName
+          lastName
+          profilePic
+        }
+      }
+      pagination {
+        page
+        limit
+        totalPages
+        totalItems
+        hasNextPage
+        hasPreviousPage
+      }
+    }
+  }
+`;
+
+const SEND_MESSAGE = gql`
+  mutation SendMessage($input: SendMessageInput!) {
+    sendMessage(input: $input) {
+      id
+      content
+      messageType
+      conversationId
+      sender {
+        id
+        firstName
+        lastName
+        email
+        profilePic
+        role
+      }
+      isRead
+      isBroadcast
+      broadcastId
+      attachments
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const MARK_AS_READ = gql`
+  mutation MarkAsRead($conversationId: ID!) {
+    markAsRead(conversationId: $conversationId) {
+      success
+      unreadCount
+    }
+  }
+`;
+
+const MESSAGE_SENT_SUBSCRIPTION = gql`
+  subscription MessageSent {
+    messageSent {
+      id
+      conversationId
+      senderId
+      content
+      messageType
+      attachments
+      isRead
+      createdAt
+    }
+  }
+`;
+
+const TYPING_STATUS_SUBSCRIPTION = gql`
+  subscription TypingStatus($conversationId: String!, $userId: String!) {
+    typingStatus(conversationId: $conversationId, userId: $userId) {
+      userId
+      conversationId
+      isTyping
+    }
+  }
+`;
+
+const SEND_TYPING_STATUS = gql`
+  mutation SendTypingStatus($conversationId: String!, $isTyping: Boolean!) {
+    sendTypingStatus(conversationId: $conversationId, isTyping: $isTyping)
+  }
+`;
+
+const SEND_HEARTBEAT = gql`
+  mutation SendHeartbeat {
+    sendHeartbeat
+  }
+`;
+
+const SEND_BROADCAST_MESSAGE = gql`
+  mutation SendBroadcastMessage($input: BroadcastMessageInput!) {
+    sendBroadcastMessage(input: $input) {
+      id
+      content
+      messageType
+      sender {
+        id
+        firstName
+        lastName
+        email
+        profilePic
+        role
+      }
+      recipientRoles
+      sentToUserIds
+      totalRecipients
+      attachments
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+// Types
 interface User {
   id: string;
   firstName: string;
   lastName: string;
   email: string;
-  avatar?: string;
+  isVerified?: boolean;
+  profilePic?: string;
+  role?: string;
 }
 
 interface Message {
   id: string;
+  conversationId: string;
+  senderId: string;
   content: string;
   messageType: string;
   isRead: boolean;
   createdAt: string;
+  attachments?: string[];
   sender: User;
-}
-
-interface Participant {
-  user: User;
 }
 
 interface Conversation {
   id: string;
-  messages: Message[];
-  participants: Participant[];
+  participants: User[];
+  unreadCount: number;
 }
 
-interface CacheData {
-  conversation: Conversation;
+interface MessagesData {
+  getMessages: {
+    items: Message[];
+    pagination: {
+      page: number;
+      limit: number;
+      totalPages: number;
+      totalItems: number;
+      hasNextPage: boolean;
+      hasPreviousPage: boolean;
+    };
+  };
+}
+
+interface ConversationData {
+  getConversation: Conversation;
 }
 
 export function ConversationDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [message, setMessage] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit] = useState(50);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [otherUserId, setOtherUserId] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
 
-  const { loading, error, data, subscribeToMore } = useQuery(GET_CONVERSATION, {
-    variables: { id },
+  // Get current user ID
+  const currentUserId = localStorage.getItem("userId") || "";
+
+  // Get conversation details
+  const { data: conversationData, loading: conversationLoading } =
+    useQuery<ConversationData>(GET_CONVERSATION, {
+      variables: { conversationId: id },
+      skip: !id,
+      onError: (error) => {
+        toast.error(`Error loading conversation: ${error.message}`);
+      },
+    });
+
+  // Get messages
+  const {
+    data: messagesData,
+    loading: messagesLoading,
+    refetch: refetchMessages,
+    subscribeToMore,
+  } = useQuery<MessagesData>(GET_MESSAGES, {
+    variables: {
+      conversationId: id,
+      filters: {},
+      page,
+      limit,
+    },
+    skip: !id,
+    fetchPolicy: "cache-and-network",
     onError: (error) => {
-      toast.error(`Error loading conversation: ${error.message}`);
+      toast.error(`Error loading messages: ${error.message}`);
     },
   });
 
@@ -76,25 +267,28 @@ export function ConversationDetailsPage() {
     onError: (error) => {
       toast.error(error.message);
     },
-    update: (cache, { data: { sendMessage: newMessage } }) => {
-      // Update the cache to include the new message
-      const existingData = cache.readQuery({
-        query: GET_CONVERSATION,
-        variables: { id },
-      }) as CacheData | null;
+    onCompleted: () => {
+      refetchMessages();
+    },
+  });
 
-      if (existingData) {
-        cache.writeQuery({
-          query: GET_CONVERSATION,
-          variables: { id },
-          data: {
-            conversation: {
-              ...existingData.conversation,
-              messages: [...existingData.conversation.messages, newMessage],
-            },
-          },
-        });
-      }
+  const [markAsRead] = useMutation(MARK_AS_READ, {
+    onError: (error) => {
+      console.error("Error marking as read:", error);
+    },
+  });
+
+  const [sendBroadcastMessage] = useMutation(SEND_BROADCAST_MESSAGE, {
+    onError: (error) => {
+      toast.error(`Broadcast failed: ${error.message}`);
+    },
+    onCompleted: (data) => {
+      toast.success(
+        `Broadcast sent to ${data.sendBroadcastMessage.totalRecipients} recipients`
+      );
+      setShowBroadcastModal(false);
+      setBroadcastMessage("");
+      setSelectedRoles([]);
     },
   });
 
@@ -104,14 +298,16 @@ export function ConversationDetailsPage() {
 
     const unsubscribe = subscribeToMore({
       document: MESSAGE_SENT_SUBSCRIPTION,
-      variables: { conversationId: id },
       updateQuery: (prev, { subscriptionData }) => {
         if (!subscriptionData.data) return prev;
-        const newMessage = subscriptionData.data.messageSent;
+        const newMessage = subscriptionData.data.getMessages.items[0];
+
+        // Only add message if it belongs to this conversation
+        if (newMessage.conversationId !== id) return prev;
 
         // Don't add the message if it's already in the list
         if (
-          prev.conversation.messages.some(
+          prev.getMessages.items.some(
             (msg: Message) => msg.id === newMessage.id
           )
         ) {
@@ -120,9 +316,9 @@ export function ConversationDetailsPage() {
 
         return {
           ...prev,
-          conversation: {
-            ...prev.conversation,
-            messages: [...prev.conversation.messages, newMessage],
+          getMessages: {
+            ...prev.getMessages,
+            items: [...prev.getMessages.items, newMessage],
           },
         };
       },
@@ -130,26 +326,31 @@ export function ConversationDetailsPage() {
 
     return () => {
       unsubscribe();
-      // Clear typing timeout on unmount
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
     };
   }, [id, subscribeToMore]);
 
+  // Mark messages as read when conversation is opened
+  useEffect(() => {
+    if (id && (conversationData?.getConversation?.unreadCount ?? 0) > 0) {
+      markAsRead({ variables: { conversationId: id } });
+    }
+  }, [id, conversationData, markAsRead]);
+
   // Extract other user ID for presence subscription
   useEffect(() => {
-    if (data?.conversation?.participants) {
-      // Get current user ID from auth store or localStorage
-      const currentUserId = localStorage.getItem("userId") || "current-user-id";
-      const otherParticipant = data.conversation.participants.find(
-        (p: Participant) => p.user.id !== currentUserId
-      );
+    if (conversationData?.getConversation?.participants) {
+      const otherParticipant =
+        conversationData.getConversation.participants.find(
+          (p: User) => p.id !== currentUserId
+        );
       if (otherParticipant) {
-        setOtherUserId(otherParticipant.user.id);
+        setOtherUserId(otherParticipant.id);
       }
     }
-  }, [data?.conversation?.participants]);
+  }, [conversationData, currentUserId]);
 
   // Subscribe to user presence
   const { isUserOnline, getUserLastSeen } = useUserPresence({
@@ -159,7 +360,7 @@ export function ConversationDetailsPage() {
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [data?.conversation?.messages]);
+  }, [messagesData?.getMessages?.items]);
 
   // Send typing status and heartbeat
   const [sendTypingStatus] = useMutation(SEND_TYPING_STATUS);
@@ -171,9 +372,8 @@ export function ConversationDetailsPage() {
       sendHeartbeat().catch((err) =>
         console.error("Failed to send heartbeat:", err)
       );
-    }, 60000); // Every minute
+    }, 60000);
 
-    // Send initial heartbeat
     sendHeartbeat().catch((err) =>
       console.error("Failed to send initial heartbeat:", err)
     );
@@ -185,8 +385,8 @@ export function ConversationDetailsPage() {
   useSubscription(TYPING_STATUS_SUBSCRIPTION, {
     variables: { conversationId: id || "", userId: otherUserId },
     skip: !id || !otherUserId,
-    onSubscriptionData: ({ subscriptionData }) => {
-      const { typingStatus } = subscriptionData.data;
+    onData: ({ data }) => {
+      const typingStatus = data?.data?.typingStatus;
       if (typingStatus) {
         setIsTyping(typingStatus.isTyping);
       }
@@ -197,12 +397,10 @@ export function ConversationDetailsPage() {
   const handleTyping = () => {
     if (!id) return;
 
-    // Clear existing timeout
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
 
-    // Send typing status
     sendTypingStatus({
       variables: {
         conversationId: id,
@@ -210,7 +408,6 @@ export function ConversationDetailsPage() {
       },
     });
 
-    // Set timeout to stop typing after 2 seconds of inactivity
     typingTimeoutRef.current = setTimeout(() => {
       sendTypingStatus({
         variables: {
@@ -237,7 +434,6 @@ export function ConversationDetailsPage() {
       });
       setMessage("");
 
-      // Send typing status false after sending message
       sendTypingStatus({
         variables: {
           conversationId: id,
@@ -253,24 +449,55 @@ export function ConversationDetailsPage() {
     }
   };
 
-  const handleBroadcast = () => {
-    // This will open the broadcast modal
-    // The modal will handle the broadcast message mutation
-    // We'll implement this in the next step
+  const handleBroadcast = async () => {
+    if (!broadcastMessage.trim()) {
+      toast.error("Please enter a message");
+      return;
+    }
+
+    if (selectedRoles.length === 0) {
+      toast.error("Please select at least one recipient role");
+      return;
+    }
+
+    try {
+      await sendBroadcastMessage({
+        variables: {
+          input: {
+            content: broadcastMessage,
+            messageType: "TEXT",
+            recipientRoles: selectedRoles,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Error sending broadcast:", error);
+    }
   };
 
-  if (loading) return <div>Loading conversation...</div>;
-  if (error) return <div>Error loading conversation: {error.message}</div>;
-  if (!data?.conversation) return <div>Conversation not found</div>;
+  const toggleRole = (role: string) => {
+    setSelectedRoles((prev) =>
+      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]
+    );
+  };
 
-  const { conversation } = data;
-  const currentUserId = localStorage.getItem("userId") || "current-user-id";
+  if (conversationLoading || messagesLoading) {
+    return <div className="p-4">Loading conversation...</div>;
+  }
+
+  if (!conversationData?.getConversation) {
+    return <div className="p-4">Conversation not found</div>;
+  }
+
+  const { getConversation: conversation } = conversationData;
+  const messages = messagesData?.getMessages?.items || [];
   const otherParticipant = conversation.participants.find(
-    (p: Participant) => p.user.id !== currentUserId
-  )?.user;
+    (p: User) => p.id !== currentUserId
+  );
 
   return (
     <div className="flex flex-col h-full">
+      {/* Header */}
       <div className="border-b p-4 flex items-center space-x-4">
         <Button
           variant="ghost"
@@ -280,10 +507,10 @@ export function ConversationDetailsPage() {
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3 flex-1">
           <Avatar>
             <AvatarImage
-              src={otherParticipant?.avatar}
+              src={otherParticipant?.profilePic}
               alt={`${otherParticipant?.firstName} ${otherParticipant?.lastName}`}
             />
             <AvatarFallback>
@@ -322,23 +549,24 @@ export function ConversationDetailsPage() {
           </div>
         </div>
         <div className="ml-auto">
-          <Button variant="outline" onClick={handleBroadcast}>
+          <Button variant="outline" onClick={() => setShowBroadcastModal(true)}>
             Send Broadcast
           </Button>
         </div>
       </div>
 
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {conversation.messages.map((msg: Message) => (
+        {messages.map((msg: Message) => (
           <div
             key={msg.id}
             className={`flex ${
-              msg.sender.id === currentUserId ? "justify-end" : "justify-start"
+              msg.senderId === currentUserId ? "justify-end" : "justify-start"
             }`}
           >
             <div
               className={`max-w-[80%] rounded-lg p-3 ${
-                msg.sender.id === currentUserId
+                msg.senderId === currentUserId
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted"
               }`}
@@ -356,6 +584,7 @@ export function ConversationDetailsPage() {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Message Input */}
       <form onSubmit={handleSendMessage} className="border-t p-4">
         <div className="flex space-x-2">
           <Input
@@ -367,11 +596,63 @@ export function ConversationDetailsPage() {
             placeholder="Type a message..."
             className="flex-1"
           />
-          <Button type="submit" size="icon">
+          <Button type="submit" size="icon" disabled={!message.trim()}>
             <Send className="h-4 w-4" />
           </Button>
         </div>
       </form>
+
+      {/* Broadcast Modal */}
+      {showBroadcastModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-bold mb-4">Send Broadcast Message</h2>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">
+                Select Recipients
+              </label>
+              <div className="space-y-2">
+                {["RENTER", "LISTER", "ADMIN"].map((role) => (
+                  <label key={role} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedRoles.includes(role)}
+                      onChange={() => toggleRole(role)}
+                      className="rounded"
+                    />
+                    <span className="text-sm">{role}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Message</label>
+              <textarea
+                value={broadcastMessage}
+                onChange={(e) => setBroadcastMessage(e.target.value)}
+                placeholder="Enter your broadcast message..."
+                className="w-full border rounded-lg p-2 min-h-[100px]"
+              />
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowBroadcastModal(false);
+                  setBroadcastMessage("");
+                  setSelectedRoles([]);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleBroadcast}>Send Broadcast</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

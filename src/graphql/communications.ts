@@ -1,78 +1,98 @@
-import { gql } from '@apollo/client';
-
+import { gql } from "@apollo/client";
 export const GET_CONVERSATIONS = gql`
-  query GetConversations($filters: ConversationFiltersInput) {
-    conversations(filters: $filters) {
-      id
-      propertyId
-      isActive
-      unreadCount
-      lastMessage {
+  query GetConversations(
+    $filters: ConversationFilters!
+    $limit: Float!
+    $page: Float!
+  ) {
+    getConversations(filters: $filters, limit: $limit, page: $page) {
+      items {
         id
-        content
-        messageType
-        isRead
+        isActive
         createdAt
-        sender {
+        updatedAt
+        participants {
+          profilePic
+          lastName
           id
           firstName
-          lastName
-          email
         }
-      }
-      participants {
-        user {
-          id
-          firstName
-          lastName
-          email
-          avatar
+        lastMessage {
+          content
+          isRead
+          sender {
+            id
+            firstName
+            lastName
+          }
         }
+        unreadCount
       }
-      property {
-        id
-        title
-        images
+      pagination {
+        page
+        limit
+        totalPages
+        totalItems
+        hasNextPage
+        hasPreviousPage
       }
     }
   }
 `;
 
 export const GET_CONVERSATION = gql`
-  query GetConversation($id: ID!) {
-    conversation(id: $id) {
+  query GetConversation($conversationId: String!) {
+    getConversation(conversationId: $conversationId) {
       id
-      propertyId
-      isActive
-      unreadCount
-      messages {
+      participants {
         id
+        firstName
+        lastName
+        email
+        isVerified
+        profilePic
+      }
+      unreadCount
+    }
+  }
+`;
+
+export const GET_MESSAGES = gql`
+  query GetMessages(
+    $conversationId: ID!
+    $filters: MessageFilters!
+    $page: Int
+    $limit: Int
+  ) {
+    getMessages(
+      conversationId: $conversationId
+      filters: $filters
+      page: $page
+      limit: $limit
+    ) {
+      items {
+        id
+        conversationId
+        senderId
         content
         messageType
-        isRead
         attachments
+        isRead
         createdAt
         sender {
           id
           firstName
           lastName
-          email
-          avatar
+          profilePic
         }
       }
-      participants {
-        user {
-          id
-          firstName
-          lastName
-          email
-          avatar
-        }
-      }
-      property {
-        id
-        title
-        images
+      pagination {
+        page
+        limit
+        totalPages
+        totalItems
+        hasNextPage
+        hasPreviousPage
       }
     }
   }
@@ -95,57 +115,32 @@ export const SEND_MESSAGE = gql`
   }
 `;
 
-export const BROADCAST_MESSAGE = gql`
-  mutation BroadcastMessage($input: BroadcastMessageInput!) {
-    broadcastMessage(input: $input) {
+export const SEND_BROADCAST_MESSAGE = gql`
+  mutation SendBroadcastMessage($input: BroadcastMessageInput!) {
+    sendBroadcastMessage(input: $input) {
       id
       content
       messageType
-      isRead
+      recipientRoles
+      sentToUserIds
+      totalRecipients
+      attachments
       createdAt
-      recipients
     }
   }
 `;
 
 export const MESSAGE_SENT_SUBSCRIPTION = gql`
-  subscription MessageSent($conversationId: ID) {
-    messageSent(conversationId: $conversationId) {
+  subscription MessageSent {
+    messageSent {
       id
+      conversationId
+      senderId
       content
       messageType
+      attachments
       isRead
       createdAt
-      sender {
-        id
-        firstName
-        lastName
-        email
-        avatar
-      }
-      conversationId
-    }
-  }
-`;
-
-export const CONVERSATION_UPDATED_SUBSCRIPTION = gql`
-  subscription ConversationUpdated {
-    conversationUpdated {
-      id
-      lastMessage {
-        id
-        content
-        messageType
-        isRead
-        createdAt
-        sender {
-          id
-          firstName
-          lastName
-        }
-      }
-      unreadCount
-      updatedAt
     }
   }
 `;
