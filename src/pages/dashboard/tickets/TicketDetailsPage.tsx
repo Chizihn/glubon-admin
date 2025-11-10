@@ -4,7 +4,6 @@ import { format } from "date-fns";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Textarea } from "../../../components/ui/textarea";
-import { Input } from "../../../components/ui/input";
 import {
   Avatar,
   AvatarFallback,
@@ -41,7 +40,7 @@ import type {
   Ticket,
   TicketStatus,
   TicketPriority,
-  TicketMessage,
+  TicketCategory,
 } from "@/types/ticket";
 
 // Mock ticket data
@@ -52,7 +51,7 @@ const mockTicket: Ticket = {
     "User is experiencing issues when trying to upload images for their property listing. The upload process starts but fails after a few seconds with an error message.",
   status: "OPEN" as TicketStatus,
   priority: "HIGH" as TicketPriority,
-  category: "TECHNICAL" as any,
+  category: "TECHNICAL" as TicketCategory,
   createdBy: {
     id: "user1",
     firstName: "John",
@@ -151,20 +150,20 @@ const getStatusColor = (status: TicketStatus) => {
   }
 };
 
-const getPriorityColor = (priority: TicketPriority) => {
-  switch (priority) {
-    case "LOW":
-      return "bg-gray-100 text-gray-800";
-    case "MEDIUM":
-      return "bg-blue-100 text-blue-800";
-    case "HIGH":
-      return "bg-orange-100 text-orange-800";
-    case "URGENT":
-      return "bg-red-100 text-red-800";
-    default:
-      return "bg-gray-100 text-gray-800";
-  }
-};
+// const getPriorityColor = (priority: TicketPriority) => {
+//   switch (priority) {
+//     case "LOW":
+//       return "bg-gray-100 text-gray-800";
+//     case "MEDIUM":
+//       return "bg-blue-100 text-blue-800";
+//     case "HIGH":
+//       return "bg-orange-100 text-orange-800";
+//     case "URGENT":
+//       return "bg-red-100 text-red-800";
+//     default:
+//       return "bg-gray-100 text-gray-800";
+//   }
+// };
 
 export default function TicketDetailsPage() {
   const { id } = useParams();

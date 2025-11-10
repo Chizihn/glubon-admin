@@ -26,7 +26,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
-import { AdPosition, AdTypeEnum } from "@/types/ad";
+import { AdPosition, AdType } from "@/types/ad";
 import { createAdSchema } from "@/validators/ad";
 
 // Define the form values type based on the schema
@@ -36,7 +36,7 @@ type FormValues = {
   imageUrl: string;
   targetUrl: string;
   position: keyof typeof AdPosition;
-  type: keyof typeof AdTypeEnum;
+  type: keyof typeof AdType;
   startDate: string;
   endDate: string;
   budget?: number;
@@ -64,7 +64,7 @@ export function CreateAdModal({
       imageUrl: "",
       targetUrl: "",
       position: AdPosition.TOP_BANNER as keyof typeof AdPosition,
-      type: AdTypeEnum.STANDARD as keyof typeof AdTypeEnum,
+      type: AdType.STANDARD as keyof typeof AdType,
       startDate: new Date().toISOString().split("T")[0],
       endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
         .toISOString()
@@ -112,7 +112,7 @@ export function CreateAdModal({
                     <FormLabel>Ad Type *</FormLabel>
                     <Select
                       onValueChange={field.onChange}
-                      value={field.value}
+                      value={field.value as string}
                       defaultValue={field.value}
                     >
                       <FormControl>
@@ -121,7 +121,7 @@ export function CreateAdModal({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {Object.entries(AdTypeEnum).map(([key, value]) => (
+                        {Object.entries(AdType).map(([key, value]) => (
                           <SelectItem key={key} value={value}>
                             {value}
                           </SelectItem>

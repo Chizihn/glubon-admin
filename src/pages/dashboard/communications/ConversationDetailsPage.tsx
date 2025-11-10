@@ -220,7 +220,7 @@ export function ConversationDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [message, setMessage] = useState("");
-  const [page, setPage] = useState(1);
+  const [page] = useState(1);
   const [limit] = useState(50);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [otherUserId, setOtherUserId] = useState<string>("");

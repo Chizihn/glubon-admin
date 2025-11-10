@@ -9,7 +9,8 @@ import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import { useAuthStore } from "../store/authStore";
 
-export const API_BASE_URL = "https://glubon-api.onrender.com";
+export const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:5000";
 export const GRAPHQL_ENDPOINT = `${API_BASE_URL}/graphql`;
 
 export const WEBSOCKET_ENDPOINT = `${API_BASE_URL.replace(

@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { useMutation } from "@apollo/client";
-import { BROADCAST_MESSAGE } from "@/graphql/communications";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Loader2,  } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { SEND_BROADCAST_MESSAGE } from "@/graphql/mutations/conversation";
 
 type User = {
   id: string;
@@ -29,15 +29,21 @@ type BroadcastMessageModalProps = {
   users: User[];
 };
 
-export function BroadcastMessageModal({ isOpen, onClose, users }: BroadcastMessageModalProps) {
+export function BroadcastMessageModal({
+  isOpen,
+  onClose,
+  users,
+}: BroadcastMessageModalProps) {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [broadcastMessage, { loading }] = useMutation(BROADCAST_MESSAGE, {
+  const [broadcastMessage, { loading }] = useMutation(SEND_BROADCAST_MESSAGE, {
     onCompleted: () => {
-      toast.success(`Broadcast message sent to ${selectedUserIds.length} recipients`);
+      toast.success(
+        `Broadcast message sent to ${selectedUserIds.length} recipients`
+      );
       handleClose();
     },
     onError: (error) => {
@@ -64,7 +70,9 @@ export function BroadcastMessageModal({ isOpen, onClose, users }: BroadcastMessa
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subject.trim() || !message.trim() || selectedUserIds.length === 0) {
-      toast.error("Please fill in all fields and select at least one recipient.");
+      toast.error(
+        "Please fill in all fields and select at least one recipient."
+      );
       return;
     }
 
@@ -101,7 +109,10 @@ export function BroadcastMessageModal({ isOpen, onClose, users }: BroadcastMessa
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+        <form
+          onSubmit={handleSubmit}
+          className="flex-1 flex flex-col overflow-hidden"
+        >
           <div className="space-y-4 overflow-y-auto flex-1">
             <div className="space-y-2">
               <Label htmlFor="subject">Subject</Label>
@@ -142,14 +153,18 @@ export function BroadcastMessageModal({ isOpen, onClose, users }: BroadcastMessa
               <div className="border rounded-md h-48 overflow-y-auto p-2 space-y-2">
                 {filteredUsers.length === 0 ? (
                   <p className="text-sm text-gray-500 text-center py-4">
-                    {searchQuery ? "No matching users found" : "No users available"}
+                    {searchQuery
+                      ? "No matching users found"
+                      : "No users available"}
                   </p>
                 ) : (
                   filteredUsers.map((user) => (
                     <div
                       key={user.id}
                       className={`flex items-center p-2 rounded-md cursor-pointer ${
-                        selectedUserIds.includes(user.id) ? "bg-accent" : "hover:bg-muted"
+                        selectedUserIds.includes(user.id)
+                          ? "bg-accent"
+                          : "hover:bg-muted"
                       }`}
                       onClick={() => toggleUserSelection(user.id)}
                     >
@@ -163,7 +178,9 @@ export function BroadcastMessageModal({ isOpen, onClose, users }: BroadcastMessa
                         <div className="font-medium">
                           {user.firstName} {user.lastName}
                         </div>
-                        <div className="text-sm text-muted-foreground">{user.email}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {user.email}
+                        </div>
                       </div>
                     </div>
                   ))
@@ -181,14 +198,19 @@ export function BroadcastMessageModal({ isOpen, onClose, users }: BroadcastMessa
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || selectedUserIds.length === 0}>
+            <Button
+              type="submit"
+              disabled={loading || selectedUserIds.length === 0}
+            >
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Sending...
                 </>
               ) : (
-                `Send to ${selectedUserIds.length} user${selectedUserIds.length !== 1 ? 's' : ''}`
+                `Send to ${selectedUserIds.length} user${
+                  selectedUserIds.length !== 1 ? "s" : ""
+                }`
               )}
             </Button>
           </DialogFooter>
