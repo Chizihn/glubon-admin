@@ -1,6 +1,6 @@
 export interface Ticket {
   id: string;
-  title: string;
+  subject: string;
   description: string;
   status: TicketStatus;
   priority: TicketPriority;
@@ -18,15 +18,12 @@ export interface Ticket {
     lastName: string;
     email: string;
     profilePic?: string;
-    role: string;
   };
-  attachments?: TicketAttachment[];
-  messages?: TicketMessage[];
-  tags?: string[];
-  dueDate?: string;
-  resolvedAt?: string;
   createdAt: string;
   updatedAt: string;
+  resolvedAt?: string;
+  closedAt?: string;
+  assignedAt?: string;
 }
 
 export interface TicketMessage {

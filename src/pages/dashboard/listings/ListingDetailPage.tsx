@@ -33,46 +33,7 @@ enum PropertyStatus {
 }
 
 // Define the Property type based on the provided data
-interface Property {
-  id: string;
-  title: string;
-  description: string;
-  status: PropertyStatus;
-  featured: boolean;
-  amount: number;
-  pricePer: string;
-  priceUnit: string;
-  propertyType: string;
-  listingType: string;
-  rentalPeriod: string;
-  roomType: string;
-  bedrooms?: number;
-  bathrooms?: number;
-  sqft?: number | null;
-  address: string;
-  city: string;
-  state: string;
-  country: string;
-  amenities: string[];
-  isForStudents: boolean;
-  isFurnished: boolean;
-  ownershipVerified: boolean;
-  visitingDays: string[];
-  visitingTimeStart: string;
-  visitingTimeEnd: string;
-  owner: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phoneNumber: string;
-  };
-  images: string[];
-  viewsCount: number;
-  likesCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { Property } from "@/types/property";
 
 // Define the valid transitions type using Record
 type ValidTransitions = Record<PropertyStatus, PropertyStatus[]>;

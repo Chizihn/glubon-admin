@@ -21,6 +21,11 @@ export const GET_ALL_LISTINGS = gql`
         featured
         ownershipVerified
         createdAt
+        stats {
+          views
+          likes
+          conversations
+        }
       }
       pagination {
         page

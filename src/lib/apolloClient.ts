@@ -74,7 +74,7 @@ const errorLink = onError(
               }
             `,
               variables: {
-                refreshToken: localStorage.getItem("refresh-token"),
+                refreshToken: useAuthStore.getState().refreshToken,
               },
             }),
           })

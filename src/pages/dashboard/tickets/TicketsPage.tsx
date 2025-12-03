@@ -19,6 +19,8 @@ import {
   AlertCircle,
   CheckCircle,
   XCircle,
+  RotateCcw,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -36,9 +38,9 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "../../../components/ui/card";
 import {
   TicketCategory,
@@ -46,123 +48,11 @@ import {
   TicketStatus,
   type Ticket,
 } from "@/types/ticket";
+import { useQuery } from "@apollo/client";
+import { GET_TICKETS, GET_TICKET_STATS } from "@/graphql/queries/tickets";
+import { useDebounce } from "@/hooks/useDebounce";
+import { ErrorState } from "@/components/ui/ErrorState";
 
-// Mock data - replace with actual API calls
-const mockTickets: Ticket[] = [
-  {
-    id: "1",
-    title: "Unable to upload property images",
-    description:
-      "User is experiencing issues when trying to upload images for their property listing.",
-    status: TicketStatus.OPEN,
-    priority: TicketPriority.HIGH,
-    category: TicketCategory.TECHNICAL,
-    createdBy: {
-      id: "user1",
-      firstName: "John",
-      lastName: "Doe",
-      email: "john.doe@example.com",
-      role: "USER",
-    },
-    assignedTo: {
-      id: "admin1",
-      firstName: "Admin",
-      lastName: "User",
-      email: "admin@glubon.com",
-    },
-    tags: ["upload", "images", "property"],
-    createdAt: "2024-01-15T10:30:00Z",
-    updatedAt: "2024-01-15T10:30:00Z",
-  },
-  {
-    id: "2",
-    title: "Payment processing error",
-    description: "Transaction failed during property listing payment.",
-    status: TicketStatus.IN_PROGRESS,
-    priority: TicketPriority.URGENT,
-    category: TicketCategory.BILLING,
-    createdBy: {
-      id: "user2",
-      firstName: "Jane",
-      lastName: "Smith",
-      email: "jane.smith@example.com",
-      role: "USER",
-    },
-    assignedTo: {
-      id: "admin2",
-      firstName: "Support",
-      lastName: "Admin",
-      email: "support@glubon.com",
-    },
-    tags: ["payment", "billing", "urgent"],
-    createdAt: "2024-01-14T14:20:00Z",
-    updatedAt: "2024-01-15T09:15:00Z",
-  },
-  {
-    id: "3",
-    title: "Account verification stuck",
-    description:
-      "User submitted documents for verification but status hasn't updated in 3 days.",
-    status: TicketStatus.PENDING,
-    priority: TicketPriority.MEDIUM,
-    category: TicketCategory.VERIFICATION,
-    createdBy: {
-      id: "user3",
-      firstName: "Mike",
-      lastName: "Johnson",
-      email: "mike.johnson@example.com",
-      role: "USER",
-    },
-    tags: ["verification", "documents"],
-    createdAt: "2024-01-13T11:45:00Z",
-    updatedAt: "2024-01-14T16:30:00Z",
-  },
-  {
-    id: "4",
-    title: "Feature request: Dark mode",
-    description:
-      "Multiple users have requested a dark mode option for the dashboard.",
-    status: TicketStatus.OPEN,
-    priority: TicketPriority.LOW,
-    category: TicketCategory.FEATURE_REQUEST,
-    createdBy: {
-      id: "user4",
-      firstName: "Sarah",
-      lastName: "Wilson",
-      email: "sarah.wilson@example.com",
-      role: "USER",
-    },
-    tags: ["feature", "ui", "dark-mode"],
-    createdAt: "2024-01-12T09:00:00Z",
-    updatedAt: "2024-01-12T09:00:00Z",
-  },
-  {
-    id: "5",
-    title: "Bug: Search filters not working",
-    description:
-      "Property search filters are not applying correctly on the main search page.",
-    status: TicketStatus.RESOLVED,
-    priority: TicketPriority.HIGH,
-    category: TicketCategory.BUG_REPORT,
-    createdBy: {
-      id: "user5",
-      firstName: "David",
-      lastName: "Brown",
-      email: "david.brown@example.com",
-      role: "USER",
-    },
-    assignedTo: {
-      id: "admin3",
-      firstName: "Tech",
-      lastName: "Lead",
-      email: "tech@glubon.com",
-    },
-    tags: ["bug", "search", "filters"],
-    resolvedAt: "2024-01-14T18:00:00Z",
-    createdAt: "2024-01-11T13:20:00Z",
-    updatedAt: "2024-01-14T18:00:00Z",
-  },
-];
 const getStatusIcon = (status: TicketStatus) => {
   switch (status) {
     case TicketStatus.OPEN:
@@ -213,69 +103,65 @@ const getPriorityColor = (priority: TicketPriority) => {
 };
 
 export default function TicketsPage() {
-  const [tickets] = useState<Ticket[]>(mockTickets);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const limit = 10;
 
-  const filteredTickets = useMemo(() => {
-    return tickets.filter((ticket) => {
-      const matchesSearch =
-        ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ticket.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ticket.createdBy.firstName
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase()) ||
-        ticket.createdBy.lastName
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase());
-
-      const matchesStatus =
-        statusFilter === "all" || ticket.status === statusFilter;
-      const matchesPriority =
-        priorityFilter === "all" || ticket.priority === priorityFilter;
-      const matchesCategory =
-        categoryFilter === "all" || ticket.category === categoryFilter;
-
-      return (
-        matchesSearch && matchesStatus && matchesPriority && matchesCategory
-      );
-    });
-  }, [tickets, searchTerm, statusFilter, priorityFilter, categoryFilter]);
-
-  const ticketStats = useMemo(() => {
-    const stats = {
-      total: tickets.length,
-      open: 0,
-      inProgress: 0,
-      pending: 0,
-      resolved: 0,
-      closed: 0,
+  const filters = useMemo(() => {
+    return {
+      ...(debouncedSearchTerm && { search: debouncedSearchTerm }),
+      ...(statusFilter !== "all" && { status: [statusFilter as TicketStatus] }),
+      ...(priorityFilter !== "all" && {
+        priority: [priorityFilter as TicketPriority],
+      }),
+      ...(categoryFilter !== "all" && {
+        category: [categoryFilter as TicketCategory],
+      }),
+      pagination: {
+        page,
+        limit,
+      },
     };
+  }, [debouncedSearchTerm, statusFilter, priorityFilter, categoryFilter, page]);
 
-    tickets.forEach((ticket) => {
-      switch (ticket.status) {
-        case TicketStatus.OPEN:
-          stats.open++;
-          break;
-        case TicketStatus.IN_PROGRESS:
-          stats.inProgress++;
-          break;
-        case TicketStatus.PENDING:
-          stats.pending++;
-          break;
-        case TicketStatus.RESOLVED:
-          stats.resolved++;
-          break;
-        case TicketStatus.CLOSED:
-          stats.closed++;
-          break;
-      }
-    });
+  const {
+    data: ticketsData,
+    loading: ticketsLoading,
+    error: ticketsError,
+    refetch: refetchTickets,
+  } = useQuery(GET_TICKETS, {
+    variables: { filter: filters },
+    fetchPolicy: "cache-and-network",
+  });
 
-    return stats;
-  }, [tickets]);
+  const { data: statsData, loading: statsLoading } = useQuery(GET_TICKET_STATS, {
+    fetchPolicy: "cache-and-network",
+  });
+
+  const tickets = (ticketsData?.getTickets?.data || []) as Ticket[];
+  const pagination = ticketsData?.getTickets?.pagination;
+  const stats = statsData?.getTicketStats || {
+    total: 0,
+    open: 0,
+    inProgress: 0,
+    resolved: 0,
+    closed: 0,
+    reopened: 0,
+  };
+
+  if (ticketsError) {
+    return (
+      <ErrorState
+        title="Failed to load tickets"
+        message={ticketsError.message}
+        onRetry={refetchTickets}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -300,7 +186,9 @@ export default function TicketsPage() {
             <CardTitle className="text-sm font-medium">Total</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{ticketStats.total}</div>
+            <div className="text-2xl font-bold">
+              {statsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : stats.total}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -309,7 +197,9 @@ export default function TicketsPage() {
             <AlertCircle className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{ticketStats.open}</div>
+            <div className="text-2xl font-bold">
+              {statsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : stats.open}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -318,16 +208,20 @@ export default function TicketsPage() {
             <Clock className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{ticketStats.inProgress}</div>
+            <div className="text-2xl font-bold">
+              {statsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : stats.inProgress}
+            </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <Clock className="h-4 w-4 text-orange-500" />
+            <CardTitle className="text-sm font-medium">Reopened</CardTitle>
+            <RotateCcw className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{ticketStats.pending}</div>
+            <div className="text-2xl font-bold">
+              {statsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : stats.reopened}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -336,7 +230,9 @@ export default function TicketsPage() {
             <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{ticketStats.resolved}</div>
+            <div className="text-2xl font-bold">
+              {statsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : stats.resolved}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -345,7 +241,9 @@ export default function TicketsPage() {
             <XCircle className="h-4 w-4 text-gray-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{ticketStats.closed}</div>
+            <div className="text-2xl font-bold">
+              {statsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : stats.closed}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -426,92 +324,124 @@ export default function TicketsPage() {
       {/* Tickets Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Tickets ({filteredTickets.length})</CardTitle>
+          <CardTitle>Tickets ({pagination?.totalItems || 0})</CardTitle>
           <CardDescription>
             Manage customer support tickets and requests
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {filteredTickets.map((ticket) => (
-              <div
-                key={ticket.id}
-                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-              >
-                <div className="flex items-center space-x-4 flex-1">
-                  <div className="flex items-center space-x-2">
-                    {getStatusIcon(ticket.status)}
-                    <span className="font-medium">#{ticket.id}</span>
-                  </div>
+            {ticketsLoading ? (
+               <div className="flex justify-center py-8">
+                 <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+               </div>
+            ) : (
+              <>
+                {tickets.map((ticket) => (
+                  <div
+                    key={ticket.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                  >
+                    <div className="flex items-center space-x-4 flex-1">
+                      <div className="flex items-center space-x-2">
+                        {getStatusIcon(ticket.status)}
+                        <span className="font-medium">#{ticket.id.substring(0, 8)}</span>
+                      </div>
 
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-gray-900 truncate">
-                      {ticket.title}
-                    </h3>
-                    <p className="text-sm text-gray-500 truncate">
-                      {ticket.description}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-gray-900 truncate">
+                          {ticket.subject}
+                        </h3>
+                        <p className="text-sm text-gray-500 truncate">
+                          {ticket.description}
+                        </p>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <Badge className={getStatusColor(ticket.status)}>
+                            {ticket.status.replace("_", " ")}
+                          </Badge>
+                          <Badge className={getPriorityColor(ticket.priority)}>
+                            {ticket.priority}
+                          </Badge>
+                          <Badge variant="outline">
+                            {ticket.category.replace("_", " ")}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-3">
+                        <div className="flex items-center space-x-2">
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage src={ticket.createdBy.profilePic} />
+                            <AvatarFallback className="text-xs">
+                              {ticket.createdBy.firstName[0]}
+                              {ticket.createdBy.lastName[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm text-gray-600">
+                            {ticket.createdBy.firstName} {ticket.createdBy.lastName}
+                          </span>
+                        </div>
+
+                        <div className="text-sm text-gray-500">
+                          {format(new Date(ticket.createdAt), "MMM dd, yyyy")}
+                        </div>
+                      </div>
+                    </div>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link to={`/dashboard/tickets/${ticket.id}`}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Details
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit Ticket
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                ))}
+
+                {tickets.length === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">
+                      No tickets found matching your criteria.
                     </p>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <Badge className={getStatusColor(ticket.status)}>
-                        {ticket.status.replace("_", " ")}
-                      </Badge>
-                      <Badge className={getPriorityColor(ticket.priority)}>
-                        {ticket.priority}
-                      </Badge>
-                      <Badge variant="outline">
-                        {ticket.category.replace("_", " ")}
-                      </Badge>
-                    </div>
                   </div>
-
-                  <div className="flex items-center space-x-3">
-                    <div className="flex items-center space-x-2">
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage src={ticket.createdBy.profilePic} />
-                        <AvatarFallback className="text-xs">
-                          {ticket.createdBy.firstName[0]}
-                          {ticket.createdBy.lastName[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm text-gray-600">
-                        {ticket.createdBy.firstName} {ticket.createdBy.lastName}
-                      </span>
-                    </div>
-
-                    <div className="text-sm text-gray-500">
-                      {format(new Date(ticket.createdAt), "MMM dd, yyyy")}
-                    </div>
-                  </div>
-                </div>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      <MoreHorizontal className="h-4 w-4" />
+                )}
+                
+                {pagination && pagination.totalPages > 1 && (
+                  <div className="flex justify-center mt-4 space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                    >
+                      Previous
                     </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem asChild>
-                      <Link to={`/dashboard/tickets/${ticket.id}`}>
-                        <Eye className="mr-2 h-4 w-4" />
-                        View Details
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Edit className="mr-2 h-4 w-4" />
-                      Edit Ticket
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            ))}
-
-            {filteredTickets.length === 0 && (
-              <div className="text-center py-8">
-                <p className="text-gray-500">
-                  No tickets found matching your criteria.
-                </p>
-              </div>
+                    <span className="flex items-center text-sm text-gray-600">
+                      Page {page} of {pagination.totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+                      disabled={page === pagination.totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </CardContent>

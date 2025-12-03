@@ -117,11 +117,11 @@ export default function ListingsPage() {
               {property.title}
             </p>
             <p className="text-sm text-gray-500 line-clamp-1">
-              {property.location?.address}
+              {property.address}, {property.city}
             </p>
-            {/* <p className="text-sm font-medium text-blue-600">
-                ₦{property.price?.toLocaleString()}
-              </p> */}
+            <p className="text-sm font-medium text-blue-600">
+                ₦{property.amount?.toLocaleString()}
+            </p>
           </div>
         </div>
       ),
@@ -146,17 +146,17 @@ export default function ListingsPage() {
       ),
     },
     {
-      key: "isFeatured",
+      key: "featured",
       label: "Featured",
-      render: (isFeatured: boolean) => (
+      render: (featured: boolean) => (
         <Badge
           className={
-            isFeatured
+            featured
               ? "bg-purple-100 text-purple-800"
               : "bg-gray-100 text-gray-800"
           }
         >
-          {isFeatured ? "Yes" : "No"}
+          {featured ? "Yes" : "No"}
         </Badge>
       ),
     },
@@ -167,7 +167,6 @@ export default function ListingsPage() {
         <div className="text-sm">
           <p>{property.stats?.views || 0} views</p>
           <p>{property.stats?.likes || 0} likes</p>
-          <p>{property.stats?.conversations || 0} inquiries</p>
         </div>
       ),
     },
@@ -195,7 +194,7 @@ export default function ListingsPage() {
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleToggleFeatured(property.id)}>
               <Star className="mr-2 h-4 w-4" />
-              {property.isFeatured ? "Remove Featured" : "Make Featured"}
+              {property.featured ? "Remove Featured" : "Make Featured"}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleStatusUpdate(property.id, "ACTIVE")}

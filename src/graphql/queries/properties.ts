@@ -11,10 +11,11 @@ export const GET_ALL_PROPERTIES = gql`
         id
         title
         description
-        price
+        amount
         status
-        isFeatured
-        isActive
+        listingType
+        rentalPeriod
+        featured
         createdAt
         updatedAt
         owner {
@@ -22,18 +23,24 @@ export const GET_ALL_PROPERTIES = gql`
           firstName
           lastName
           email
+          phoneNumber
+          profilePic
         }
-        stats {
-          views
-          likes
-          conversations
-        }
+        viewsCount
+        likesCount
         images
-        location {
-          address
-          city
-          state
-        }
+        address
+        city
+        state
+        country
+        latitude
+        longitude
+        propertyType
+        roomType
+        bedrooms
+        bathrooms
+        sqft
+        numberOfUnits
       }
       pagination {
         page
@@ -53,10 +60,11 @@ export const GET_PROPERTY_BY_ID = gql`
       id
       title
       description
-      price
+      amount
       status
-      isFeatured
-      isActive
+      listingType
+      rentalPeriod
+      featured
       createdAt
       updatedAt
       owner {
@@ -65,28 +73,48 @@ export const GET_PROPERTY_BY_ID = gql`
         lastName
         email
         phoneNumber
+        profilePic
       }
-      stats {
-        views
-        likes
-        conversations
-      }
+      viewsCount
+      likesCount
+      
       images
-      location {
-        address
-        city
-        state
-        country
-        coordinates {
-          latitude
-          longitude
-        }
-      }
+      sampleUnitImages
+      livingRoomImages
+      bedroomImages
+      bathroomImages
+      video
+      
+      address
+      city
+      state
+      country
+      latitude
+      longitude
+      
       amenities
       propertyType
+      roomType
       bedrooms
       bathrooms
-      area
+      sqft
+      
+      isFurnished
+      isForStudents
+      isStandalone
+      totalUnits
+      availableUnits
+      rentedUnits
+      numberOfUnits
+      
+      visitingDays
+      visitingTimeStart
+      visitingTimeEnd
+      
+      propertyOwnershipDocs
+      propertyPlanDocs
+      propertyDimensionDocs
+      ownershipVerified
     }
   }
 `;

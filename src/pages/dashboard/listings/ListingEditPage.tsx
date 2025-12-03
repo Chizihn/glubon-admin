@@ -34,16 +34,16 @@ import { UPDATE_PROPERTY_STATUS } from "../../../graphql/mutations/listings";
 const editListingSchema = z.object({
   title: z.string().min(10, "Title must be at least 10 characters"),
   description: z.string().min(50, "Description must be at least 50 characters"),
-  type: z.string(),
+  propertyType: z.string(),
   status: z.string(),
-  price: z.number().min(1, "Price must be greater than 0"),
+  amount: z.number().min(1, "Amount must be greater than 0"),
   bedrooms: z.number().min(0),
   bathrooms: z.number().min(0),
-  area: z.number().optional(),
+  sqft: z.number().optional(),
   address: z.string().min(10, "Address must be at least 10 characters"),
   city: z.string().min(2, "City is required"),
   state: z.string().min(2, "State is required"),
-  furnished: z.boolean(),
+  isFurnished: z.boolean(),
   featured: z.boolean(),
   amenities: z.array(z.string()).optional(),
 });
@@ -59,7 +59,7 @@ export default function ListingEditPage() {
   const [images, setImages] = useState<string[]>([]);
 
   const { data, loading } = useQuery(GET_LISTING_BY_ID, {
-    variables: { listingId },
+    variables: { getPropertyId: listingId },
   });
 
   const [updateListing] = useMutation(UPDATE_PROPERTY_STATUS);
@@ -78,16 +78,16 @@ export default function ListingEditPage() {
       ? {
           title: listing.title,
           description: listing.description,
-          type: listing.type,
+          propertyType: listing.propertyType,
           status: listing.status,
-          price: listing.price,
+          amount: listing.amount,
           bedrooms: listing.bedrooms,
           bathrooms: listing.bathrooms,
-          area: listing.area,
+          sqft: listing.sqft,
           address: listing.address,
           city: listing.city,
           state: listing.state,
-          furnished: listing.furnished,
+          isFurnished: listing.isFurnished,
           featured: listing.featured,
           amenities: listing.amenities || [],
         }
@@ -114,18 +114,30 @@ export default function ListingEditPage() {
 
   const onSubmit = async (data: EditListingForm) => {
     try {
-      await updateListing({
-        variables: {
-          listingId,
-          input: {
-            ...data,
-            amenities: selectedAmenities,
-            images,
+      // Only status and featured updates are supported by the backend for now
+      if (data.status !== listing.status) {
+        await updateListing({
+          variables: {
+            input: {
+              propertyId: listingId,
+              status: data.status,
+            },
           },
-        },
-      });
+        });
+      }
 
-      toast.success("Listing updated successfully");
+      // TODO: Handle other field updates when backend supports it
+      if (
+        data.title !== listing.title ||
+        data.description !== listing.description ||
+        data.amount !== listing.amount
+      ) {
+        toast.info(
+          "Note: Only status and featured updates are currently supported. Other changes were not saved."
+        );
+      } else {
+        toast.success("Listing updated successfully");
+      }
 
       navigate(`/dashboard/listings/${listingId}`);
     } catch (error: any) {
@@ -236,10 +248,10 @@ export default function ListingEditPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="type">Property Type *</Label>
+                    <Label htmlFor="propertyType">Property Type *</Label>
                     <Select
-                      onValueChange={(value) => setValue("type", value)}
-                      defaultValue={listing.type}
+                      onValueChange={(value) => setValue("propertyType", value)}
+                      defaultValue={listing.propertyType}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select property type" />
@@ -278,17 +290,17 @@ export default function ListingEditPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="price">Price (₦) *</Label>
+                  <Label htmlFor="amount">Amount (₦) *</Label>
                   <Input
-                    id="price"
+                    id="amount"
                     type="number"
-                    {...register("price", { valueAsNumber: true })}
-                    className={errors.price ? "border-red-500" : ""}
+                    {...register("amount", { valueAsNumber: true })}
+                    className={errors.amount ? "border-red-500" : ""}
                     placeholder="2500000"
                   />
-                  {errors.price && (
+                  {errors.amount && (
                     <p className="text-sm text-red-600 mt-1">
-                      {errors.price.message}
+                      {errors.amount.message}
                     </p>
                   )}
                 </div>
@@ -326,11 +338,11 @@ export default function ListingEditPage() {
                   </div>
 
                   <div>
-                    <Label htmlFor="area">Area (sqft)</Label>
+                    <Label htmlFor="sqft">Area (sqft)</Label>
                     <Input
-                      id="area"
+                      id="sqft"
                       type="number"
-                      {...register("area", { valueAsNumber: true })}
+                      {...register("sqft", { valueAsNumber: true })}
                       placeholder="1200"
                     />
                   </div>
@@ -338,16 +350,16 @@ export default function ListingEditPage() {
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label htmlFor="furnished">Furnished</Label>
+                    <Label htmlFor="isFurnished">Furnished</Label>
                     <p className="text-sm text-gray-600">
                       Is this property furnished?
                     </p>
                   </div>
                   <Switch
-                    id="furnished"
-                    checked={watch("furnished")}
+                    id="isFurnished"
+                    checked={watch("isFurnished")}
                     onCheckedChange={(checked) =>
-                      setValue("furnished", checked)
+                      setValue("isFurnished", checked)
                     }
                   />
                 </div>
@@ -545,13 +557,13 @@ export default function ListingEditPage() {
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">Views</span>
                   <span className="text-sm font-medium">
-                    {listing.analytics?.views || 0}
+                    {listing.viewsCount || 0}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Inquiries</span>
+                  <span className="text-sm text-gray-600">Likes</span>
                   <span className="text-sm font-medium">
-                    {listing.analytics?.inquiries || 0}
+                    {listing.likesCount || 0}
                   </span>
                 </div>
               </CardContent>

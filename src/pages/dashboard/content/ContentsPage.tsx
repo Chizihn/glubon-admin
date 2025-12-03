@@ -1,19 +1,22 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useQuery } from "@apollo/client";
 import { Card, CardContent } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
 import { Badge } from "../../../components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "../../../components/ui/tabs";
-import { Plus, FileText, Newspaper, HelpCircle, File } from "lucide-react";
+import { Plus, FileText, Newspaper, HelpCircle, File, Loader2 } from "lucide-react";
+import { GET_CONTENTS, GET_FAQS } from "@/graphql/queries/content";
+import { ErrorState } from "@/components/ui/ErrorState";
 
 type ContentType = 'page' | 'post' | 'news' | 'faq' | 'custom';
-type ContentStatus = 'draft' | 'published' | 'archived' | 'scheduled' | 'trash';
+type ContentStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'SCHEDULED' | 'TRASH';
 
 interface ContentItem {
   id: string;
   title: string;
-  slug: string;
+  slug?: string;
   type: ContentType;
-  status: ContentStatus;
+  status: ContentStatus | string;
   author: string;
   updatedAt: string;
   views?: number;
@@ -21,117 +24,83 @@ interface ContentItem {
 
 const ContentsPage = () => {
   const [activeTab, setActiveTab] = useState<ContentType>('page');
-  
-  // Mock data - replace with actual data fetching
-  const [contents] = useState<ContentItem[]>([
-    {
-      id: '1',
-      title: 'Welcome to Glubon',
-      slug: 'welcome',
-      type: 'page',
-      status: 'published',
-      author: 'Admin User',
-      updatedAt: '2023-05-15T10:30:00Z',
-      views: 1245
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
+  // Query for generic content (Page, Post, News)
+  const { 
+    data: contentData, 
+    loading: contentLoading, 
+    error: contentError,
+    refetch: refetchContent
+  } = useQuery(GET_CONTENTS, {
+    variables: { 
+      filters: { 
+        types: [activeTab.toUpperCase()],
+        page,
+        limit
+      } 
     },
-    {
-      id: '2',
-      title: 'Getting Started Guide',
-      slug: 'getting-started',
-      type: 'post',
-      status: 'published',
-      author: 'Support Team',
-      updatedAt: '2023-05-10T14:20:00Z',
-      views: 876
-    },
-    {
-      id: '3',
-      title: 'Latest Updates',
-      slug: 'latest-updates',
-      type: 'news',
-      status: 'published',
-      author: 'Editor',
-      updatedAt: '2023-05-05T09:15:00Z',
-      views: 1532
-    },
-    {
-      id: '4',
-      title: 'How to Use the Dashboard',
-      slug: 'dashboard-guide',
-      type: 'faq',
-      status: 'draft',
-      author: 'Support Team',
-      updatedAt: '2023-04-28T11:45:00Z',
-      views: 0
+    skip: activeTab === 'faq',
+    fetchPolicy: "cache-and-network"
+  });
+
+  // Query for FAQs
+  const { 
+    data: faqData, 
+    loading: faqLoading, 
+    error: faqError,
+    refetch: refetchFaqs
+  } = useQuery(GET_FAQS, {
+    skip: activeTab !== 'faq',
+    fetchPolicy: "cache-and-network"
+  });
+
+  const isLoading = activeTab === 'faq' ? faqLoading : contentLoading;
+  const error = activeTab === 'faq' ? faqError : contentError;
+
+  const items: ContentItem[] = useMemo(() => {
+    if (activeTab === 'faq') {
+      return (faqData?.getFAQs || []).map((faq: any) => ({
+        id: faq.id,
+        title: faq.question,
+        type: 'faq',
+        status: faq.isActive ? 'PUBLISHED' : 'DRAFT',
+        author: faq.updatedBy, // This is an ID, ideally we'd resolve it or the backend would return a User object
+        updatedAt: faq.updatedAt,
+        views: 0 // FAQs might not have view counts in this query
+      }));
+    } else {
+      return (contentData?.contents?.items || []).map((item: any) => ({
+        id: item.id,
+        title: item.title,
+        slug: item.slug,
+        type: item.type.toLowerCase(),
+        status: item.status,
+        author: item.author ? `${item.author.firstName} ${item.author.lastName}` : 'Unknown',
+        updatedAt: item.updatedAt,
+        views: item.viewCount
+      }));
     }
-  ]);
+  }, [activeTab, faqData, contentData]);
 
-//   // Mock data for FAQs
-//   const faqs = [
-//     {
-//       id: "1",
-//       question: "How do I list my property?",
-//       category: "LISTING",
-//       status: "PUBLISHED",
-//       views: 1250,
-//       lastModified: "2024-01-15T10:30:00Z",
-//     },
-//     {
-//       id: "2",
-//       question: "What are the payment methods accepted?",
-//       category: "PAYMENT",
-//       status: "PUBLISHED",
-//       views: 890,
-//       lastModified: "2024-01-14T14:20:00Z",
-//     },
-//     {
-//       id: "3",
-//       question: "How does the verification process work?",
-//       category: "VERIFICATION",
-//       status: "DRAFT",
-//       views: 0,
-//       lastModified: "2024-01-13T16:15:00Z",
-//     },
-//   ];
-
-//   // Mock data for email templates
-//   const emailTemplates = [
-//     {
-//       id: "1",
-//       name: "Welcome Email",
-//       type: "TRANSACTIONAL",
-//       status: "ACTIVE",
-//       lastSent: "2024-01-15T10:30:00Z",
-//       sentCount: 1250,
-//     },
-//     {
-//       id: "2",
-//       name: "Property Approved",
-//       type: "NOTIFICATION",
-//       status: "ACTIVE",
-//       lastSent: "2024-01-15T09:15:00Z",
-//       sentCount: 89,
-//     },
-//     {
-//       id: "3",
-//       name: "Monthly Newsletter",
-//       type: "MARKETING",
-//       status: "DRAFT",
-//       lastSent: null,
-//       sentCount: 0,
-//     },
-//   ];
-
-  const getStatusBadge = (status: ContentStatus) => {
-    const statusMap = {
-      draft: { label: 'Draft', variant: 'outline' as const },
-      published: { label: 'Published', variant: 'default' as const },
-      archived: { label: 'Archived', variant: 'secondary' as const },
-      scheduled: { label: 'Scheduled', variant: 'outline' as const },
-      trash: { label: 'Trash', variant: 'destructive' as const },
+  const getStatusBadge = (status: string) => {
+    const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+      DRAFT: { label: 'Draft', variant: 'outline' },
+      PUBLISHED: { label: 'Published', variant: 'default' },
+      ARCHIVED: { label: 'Archived', variant: 'secondary' },
+      SCHEDULED: { label: 'Scheduled', variant: 'outline' },
+      TRASH: { label: 'Trash', variant: 'destructive' },
+      // FAQ specific
+      true: { label: 'Active', variant: 'default' },
+      false: { label: 'Inactive', variant: 'secondary' }
     };
     
-    const { label, variant } = statusMap[status] || { label: 'Unknown', variant: 'outline' as const };
+    // Handle boolean status from FAQ mapping if needed, though we mapped to strings above
+    const normalizedStatus = status === 'true' || status === 'PUBLISHED' ? 'PUBLISHED' : 
+                             status === 'false' ? 'DRAFT' : status;
+
+    const { label, variant } = statusMap[normalizedStatus] || { label: status, variant: 'outline' };
     return <Badge variant={variant} className="capitalize">{label}</Badge>;
   };
 
@@ -150,7 +119,15 @@ const ContentsPage = () => {
     }
   };
 
-  const filteredContents = contents.filter(content => content.type === activeTab);
+  if (error) {
+    return (
+      <ErrorState 
+        title="Failed to load content" 
+        message={error.message} 
+        onRetry={() => activeTab === 'faq' ? refetchFaqs() : refetchContent()} 
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -183,59 +160,63 @@ const ContentsPage = () => {
             <HelpCircle className="h-4 w-4 mr-2" />
             FAQs
           </TabsTrigger>
-          <TabsTrigger value="custom">
-            <File className="h-4 w-4 mr-2" />
-            Custom
-          </TabsTrigger>
         </TabsList>
 
         <div className="mt-6 space-y-4">
-          {filteredContents.map((content) => (
-            <Card key={content.id} className="hover:bg-gray-50 transition-colors">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    {getTypeIcon(content.type)}
-                    <div>
-                      <h3 className="font-medium">{content.title}</h3>
-                      <div className="flex items-center space-x-2 text-sm text-gray-500">
-                        <span>/{content.slug}</span>
-                        <span>•</span>
-                        <span>By {content.author}</span>
-                        <span>•</span>
-                        <span>{new Date(content.updatedAt).toLocaleDateString()}</span>
-                        {content.views !== undefined && (
-                          <>
+          {isLoading ? (
+             <div className="flex justify-center py-12">
+               <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+             </div>
+          ) : (
+            <>
+              {items.map((content) => (
+                <Card key={content.id} className="hover:bg-gray-50 transition-colors">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        {getTypeIcon(content.type)}
+                        <div>
+                          <h3 className="font-medium">{content.title}</h3>
+                          <div className="flex items-center space-x-2 text-sm text-gray-500">
+                            {content.slug && <span>/{content.slug}</span>}
+                            {content.slug && <span>•</span>}
+                            <span>By {content.author}</span>
                             <span>•</span>
-                            <span>{content.views.toLocaleString()} views</span>
-                          </>
-                        )}
+                            <span>{new Date(content.updatedAt).toLocaleDateString()}</span>
+                            {content.views !== undefined && (
+                              <>
+                                <span>•</span>
+                                <span>{content.views.toLocaleString()} views</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        {getStatusBadge(content.status)}
+                        <Button variant="ghost" size="sm">
+                          Edit
+                        </Button>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    {getStatusBadge(content.status)}
-                    <Button variant="ghost" size="sm">
-                      Edit
-                    </Button>
-                  </div>
+                  </CardContent>
+                </Card>
+              ))}
+              
+              {items.length === 0 && (
+                <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                  <FileText className="h-12 w-12 mx-auto text-gray-300" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No {activeTab} content found</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Get started by creating a new {activeTab}.
+                  </p>
+                  <Button className="mt-4">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-          
-          {filteredContents.length === 0 && (
-            <div className="text-center py-12 border-2 border-dashed rounded-lg">
-              <FileText className="h-12 w-12 mx-auto text-gray-300" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No {activeTab} content found</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Get started by creating a new {activeTab}.
-              </p>
-              <Button className="mt-4">
-                <Plus className="h-4 w-4 mr-2" />
-                Create {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
-              </Button>
-            </div>
+              )}
+            </>
           )}
         </div>
       </Tabs>
