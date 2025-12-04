@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@apollo/client";
 import { Link } from "react-router-dom";
@@ -830,7 +831,7 @@ const DashboardPage: React.FC = () => {
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
-                      data={geographicData}
+                      data={geographicData as any[]}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
