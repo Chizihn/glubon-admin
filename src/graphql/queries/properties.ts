@@ -114,7 +114,6 @@ export const GET_PROPERTY_BY_ID = gql`
       propertyOwnershipDocs
       propertyPlanDocs
       propertyDimensionDocs
-      ownershipVerified
     }
   }
 `;

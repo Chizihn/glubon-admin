@@ -24,7 +24,7 @@ interface ContentItem {
 
 const ContentsPage = () => {
   const [activeTab, setActiveTab] = useState<ContentType>('page');
-  const [page, setPage] = useState(1);
+  const page = 1;
   const limit = 10;
 
   // Query for generic content (Page, Post, News)

@@ -43,9 +43,29 @@ import type {
   TicketCategory,
 } from "@/types/ticket";
 
-// Mock ticket data
-const mockTicket: Ticket = {
+// Mock ticket data with extended fields for UI
+interface ExtendedTicket extends Ticket {
+  title: string;
+  tags: string[];
+  messages: Array<{
+    id: string;
+    content: string;
+    author: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      profilePic?: string;
+      role: string;
+    };
+    isInternal: boolean;
+    createdAt: string;
+  }>;
+}
+
+const mockTicket: ExtendedTicket = {
   id: "1",
+  subject: "Unable to upload property images",
   title: "Unable to upload property images",
   description:
     "User is experiencing issues when trying to upload images for their property listing. The upload process starts but fails after a few seconds with an error message.",
@@ -58,7 +78,6 @@ const mockTicket: Ticket = {
     lastName: "Doe",
     email: "john.doe@example.com",
     profilePic: "/placeholder.svg",
-    role: "USER",
   },
   assignedTo: {
     id: "admin1",
@@ -167,7 +186,7 @@ const getStatusColor = (status: TicketStatus) => {
 
 export default function TicketDetailsPage() {
   const { id } = useParams();
-  const [ticket] = useState<Ticket>(mockTicket);
+  const [ticket] = useState<ExtendedTicket>(mockTicket);
   const [newMessage, setNewMessage] = useState("");
   const [isInternal, setIsInternal] = useState(false);
   const [newStatus, setNewStatus] = useState(ticket.status);
@@ -441,8 +460,7 @@ export default function TicketDetailsPage() {
               <div className="space-y-2">
                 <div className="flex items-center space-x-2 text-sm">
                   <User className="h-4 w-4 text-gray-500" />
-                  <span className="text-gray-600">Role:</span>
-                  <Badge variant="outline">{ticket.createdBy.role}</Badge>
+                  <span className="text-gray-600">Customer</span>
                 </div>
                 <div className="flex items-center space-x-2 text-sm">
                   <Calendar className="h-4 w-4 text-gray-500" />

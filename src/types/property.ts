@@ -73,7 +73,6 @@ export interface Property {
   propertyOwnershipDocs: string[];
   propertyPlanDocs: string[];
   propertyDimensionDocs: string[];
-  ownershipVerified: boolean;
 }
 
 export interface PropertyFilters {

@@ -122,7 +122,6 @@ export const GET_TRANSACTION_BY_ID = gql`
         city
         state
         country
-        ownershipVerified
         images
         owner {
           id

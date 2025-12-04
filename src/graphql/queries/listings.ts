@@ -19,7 +19,6 @@ export const GET_ALL_LISTINGS = gql`
         bedrooms
         bathrooms
         featured
-        ownershipVerified
         createdAt
         stats {
           views
@@ -67,7 +66,6 @@ export const GET_LISTING_BY_ID = gql`
       isFurnished
       isForStudents
       featured
-      ownershipVerified
       images
       livingRoomImages
       bedroomImages

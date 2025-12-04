@@ -172,7 +172,7 @@ export default function ListingDetailPage() {
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <Badge className={getStatusColor(property.status)}>
+          <Badge className={getStatusColor(property.status as PropertyStatus)}>
             {property.status}
           </Badge>
           {isFeatured && (
@@ -183,7 +183,7 @@ export default function ListingDetailPage() {
 
       {/* Actions */}
       <div className="flex space-x-2">
-        {validTransitions[property.status]?.includes(PropertyStatus.ACTIVE) && (
+        {validTransitions[property.status as PropertyStatus]?.includes(PropertyStatus.ACTIVE) && (
           <Button
             onClick={() => handleStatusUpdate(PropertyStatus.ACTIVE)}
             className="bg-green-600 hover:bg-green-700"
@@ -193,7 +193,7 @@ export default function ListingDetailPage() {
             Approve
           </Button>
         )}
-        {validTransitions[property.status]?.includes(
+        {validTransitions[property.status as PropertyStatus]?.includes(
           PropertyStatus.REJECTED
         ) && (
           <Button
@@ -205,7 +205,7 @@ export default function ListingDetailPage() {
             Reject
           </Button>
         )}
-        {validTransitions[property.status]?.includes(
+        {validTransitions[property.status as PropertyStatus]?.includes(
           PropertyStatus.SUSPENDED
         ) && (
           <Button
@@ -303,8 +303,7 @@ export default function ListingDetailPage() {
               <div>
                 <p className="text-sm font-medium text-gray-500">Price</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {property.priceUnit} {price?.toLocaleString()} /{" "}
-                  {property.pricePer}
+                  {price?.toLocaleString()}
                 </p>
               </div>
               <div>
@@ -368,14 +367,7 @@ export default function ListingDetailPage() {
                   {property.isFurnished ? "Yes" : "No"}
                 </p>
               </div>
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-gray-500">
-                  Ownership Verified
-                </p>
-                <p className="text-gray-900">
-                  {property.ownershipVerified ? "Yes" : "No"}
-                </p>
-              </div>
+           
             </CardContent>
           </Card>
 
